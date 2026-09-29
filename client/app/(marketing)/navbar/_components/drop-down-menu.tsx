@@ -5,7 +5,7 @@ import {
   AccordionTrigger
 } from "@/components/ui/accordion";
 import { Button } from "@/components/ui/button";
-// import { BarChart, ChevronDown } from "lucide-react";
+import { BarChart, ChevronDown } from "lucide-react";
 import Link from "next/link";
 
 interface DropdownMenuProps {
@@ -31,7 +31,7 @@ const DropdownMenu = ({
         >
           <AccordionTrigger>
             Product
-            {/* <ChevronDown className="h-4 w-4 shrink-0 transition-transform duration-200" /> */}
+            <ChevronDown className="h-4 w-4 shrink-0 transition-transform duration-200" />
           </AccordionTrigger>
           <AccordionContent
             className="space-y-2"
@@ -42,7 +42,7 @@ const DropdownMenu = ({
               onClick={handleLinkClick}
             >
               <div>
-                {/* <BarChart className="h-6 w-6 mr-4 text-orange-400" /> */}
+                <BarChart className="h-6 w-6 mr-4 text-orange-400" />
               </div>
               <div>Sales</div>
             </Link>
@@ -52,7 +52,7 @@ const DropdownMenu = ({
               onClick={handleLinkClick}
             >
               <div>
-                {/* <BarChart className="h-6 w-6 mr-4 text-orange-400" /> */}
+                <BarChart className="h-6 w-6 mr-4 text-orange-400" />
               </div>
               <div>Sales</div>
             </Link>
@@ -124,7 +124,7 @@ const DropdownMenu = ({
               onClick={handleLinkClick}
             >
               <div>
-                {/* <BarChart className="h-6 w-6 mr-4 text-orange-400" /> */}
+                <BarChart className="h-6 w-6 mr-4 text-orange-400" />
               </div>
               <div>Sales</div>
             </Link>
@@ -134,7 +134,7 @@ const DropdownMenu = ({
               onClick={handleLinkClick}
             >
               <div>
-                {/* <BarChart className="h-6 w-6 mr-4 text-orange-400" /> */}
+                <BarChart className="h-6 w-6 mr-4 text-orange-400" />
               </div>
               <div>Sales</div>
             </Link>
@@ -144,7 +144,7 @@ const DropdownMenu = ({
               onClick={handleLinkClick}
             >
               <div>
-                {/* <BarChart className="h-6 w-6 mr-4 text-orange-400" /> */}
+                <BarChart className="h-6 w-6 mr-4 text-orange-400" />
               </div>
               <div>Sales</div>
             </Link>
@@ -206,7 +206,7 @@ const DropdownMenu = ({
               onClick={handleLinkClick}
             >
               <div>
-                {/* <BarChart className="h-6 w-6 mr-4 text-orange-400" /> */}
+                <BarChart className="h-6 w-6 mr-4 text-orange-400" />
               </div>
               <div>Sales</div>
             </Link>
@@ -216,7 +216,7 @@ const DropdownMenu = ({
               onClick={handleLinkClick}
             >
               <div>
-                {/* <BarChart className="h-6 w-6 mr-4 text-orange-400" /> */}
+                <BarChart className="h-6 w-6 mr-4 text-orange-400" />
               </div>
               <div>Sales</div>
             </Link>
@@ -226,7 +226,7 @@ const DropdownMenu = ({
               onClick={handleLinkClick}
             >
               <div>
-                {/* <BarChart className="h-6 w-6 mr-4 text-orange-400" /> */}
+                <BarChart className="h-6 w-6 mr-4 text-orange-400" />
               </div>
               <div>Sales</div>
             </Link>
@@ -236,7 +236,7 @@ const DropdownMenu = ({
               onClick={handleLinkClick}
             >
               <div>
-                {/* <BarChart className="h-6 w-6 mr-4 text-orange-400" /> */}
+                <BarChart className="h-6 w-6 mr-4 text-orange-400" />
               </div>
               <div>Sales</div>
             </Link>
@@ -288,7 +288,7 @@ const DropdownMenu = ({
               onClick={handleLinkClick}
             >
               <div>
-                {/* <BarChart className="h-6 w-6 mr-4 text-orange-400" /> */}
+                <BarChart className="h-6 w-6 mr-4 text-orange-400" />
               </div>
               <div>Sales</div>
             </Link>

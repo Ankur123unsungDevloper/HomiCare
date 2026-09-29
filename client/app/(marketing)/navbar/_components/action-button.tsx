@@ -3,7 +3,7 @@
 import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-// import { AlignJustify, X } from "lucide-react";
+import { AlignJustify, X } from "lucide-react";
 import DropdownMenu from "./drop-down-menu";
 
 const ActionButton = () => {
@@ -55,7 +55,7 @@ const ActionButton = () => {
           onClick={toggleDropdown}
           className="rounded-full xl:hidden"
         >
-          {/* <X className="h-6 w-6 items-center justify-center" /> */}
+          <X className="h-6 w-6 items-center justify-center" />
         </div>
       )}
       {!isDropdownVisible && (
@@ -63,7 +63,7 @@ const ActionButton = () => {
           onClick={toggleDropdown}
           className="flex lg:hidden"
         >
-          {/* <AlignJustify className="h-6 w-6 items-center justify-center mr-2" /> */}
+          <AlignJustify className="h-6 w-6 items-center justify-center mr-2" />
         </div>
       )}
       {isDropdownVisible &&
