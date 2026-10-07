@@ -1,4 +1,4 @@
 export const siteConfig = {
-  name: "RegNote",
-  description: "The connected workspace where better, faster work happens.",
+  name: "HomiCare",
+  description: "HomiCare is a platform that connects families with verified domestic helpers, providing reliable household support for every generation.",
 }

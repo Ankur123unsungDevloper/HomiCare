@@ -1,9 +1,14 @@
 import type { Metadata } from "next";
 import "./globals.css";
-import { Inter } from "next/font/google";
+
 import { siteConfig } from "@/config/site";
 
-const inter = Inter({subsets: ['latin']})
+import { Manrope } from "next/font/google";
+
+const manrope = Manrope({
+  variable: "--font-manrope",
+  subsets: ["latin"],
+});
 
 export const metadata: Metadata = {
   title: {
@@ -34,7 +39,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={inter.className}>
+      <body className={manrope.variable}>
         {children}
       </body>
     </html>

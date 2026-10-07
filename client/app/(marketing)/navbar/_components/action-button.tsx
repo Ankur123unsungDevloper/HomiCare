@@ -38,13 +38,13 @@ const ActionButton = () => {
           </Button>
           <Button
             size="sm"
-            className="hidden lg:flex text-center items-center justify-center h-7.5 w-32.5 p-2"
+            className="hidden lg:flex text-center items-center justify-center p-5 rounded-xl"
           >
             <Link
               href="/sign-up"
               className="text-sm font-semibold"
             >
-              Get RegNote free
+              Get HomiCare free
             </Link>
           </Button>
         </div>

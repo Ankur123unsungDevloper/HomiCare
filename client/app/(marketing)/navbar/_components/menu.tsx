@@ -21,7 +21,11 @@ import { IoDocumentTextOutline } from "react-icons/io5";
 import { TbTargetArrow } from "react-icons/tb";
 import { BsCalendarDate } from "react-icons/bs";
 
-const components: { title: string; href: string; description: string }[] = [
+const components: {
+  title: string;
+  href: string;
+  description: string
+}[] = [
   {
     title: "Alert Dialog",
     href: "/docs/primitives/alert-dialog",
@@ -56,6 +60,28 @@ const components: { title: string; href: string; description: string }[] = [
     href: "/docs/primitives/tooltip",
     description:
       "A popup that displays information related to an element when the element receives keyboard focus or the mouse hovers over it.",
+  },
+]
+
+const verifications: {
+  title: string;
+  href: string;
+  description: string
+}[] = [
+  {
+    title: "Aadhaar Verification",
+    href: "/verifi/aadhaar-verification",
+    description: "The Helper's Aadhaar card is verified to ensure that the individual is who they claim to be, providing an added layer of security and trust.",
+  },
+  {
+    title: "Crime Background Verification",
+    href: "/verifi/crime-background-verification",
+    description: "The individual's criminal history is checked to ensure they have no prior convictions that could pose a risk.",
+  },
+  {
+    title: "Address Verification",
+    href: "/verifi/address-verification",
+    description: "The individual's address is verified to ensure it is accurate and up-to-date.",
   },
 ]
 
@@ -218,16 +244,16 @@ export function NavigationMenuListItems() {
           </NavigationMenuContent>
         </NavigationMenuItem>
         <NavigationMenuItem>
-          <NavigationMenuTrigger>Resources</NavigationMenuTrigger>
+          <NavigationMenuTrigger>Verification</NavigationMenuTrigger>
           <NavigationMenuContent>
-            <ul className="grid w-100 gap-3 p-4 md:w-125 md:grid-cols-2 lg:w-150 ">
-              {components.map((component) => (
+            <ul className="grid w-100 gap-2 p-4 md:w-125 md:grid-cols-1 lg:w-150 ">
+              {verifications.map((verification) => (
                 <ListItem
-                  key={component.title}
-                  title={component.title}
-                  href={component.href}
+                  key={verification.title}
+                  title={verification.title}
+                  href={verification.href}
                 >
-                  {component.description}
+                  {verification.description}
                 </ListItem>
               ))}
             </ul>

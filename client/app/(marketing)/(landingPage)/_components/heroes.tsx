@@ -1,7 +1,12 @@
 /* eslint-disable @next/next/no-img-element */
 "use client";
 
-import { useEffect, useState } from "react";
+import { Button } from "@/components/ui/button";
+
+import {
+  useEffect,
+  useState
+} from "react";
 
 const scenes = [
   {
@@ -98,9 +103,9 @@ export default function Hero() {
               </p>
             </div>
             <div className="mt-8">
-              <button className="rounded-full bg-neutral-900 px-7 py-3.5 text-sm font-medium text-white transition hover:bg-neutral-800">
+              <Button className="rounded-xl bg-neutral-900 px-7 py-3.5 h-12 text-lg font-medium text-white transition hover:bg-neutral-800 hover:cursor-pointer">
                 Find a Helper
-              </button>
+              </Button>
             </div>
           </div>
           <div className="relative flex h-full w-1/2 items-center justify-center">
