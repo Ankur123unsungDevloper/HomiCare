@@ -1,7 +1,6 @@
 "use client";
 
 import * as React from "react";
-
 import Link from "next/link";
 
 import { cn } from "@/lib/utils";
@@ -16,251 +15,141 @@ import {
   navigationMenuTriggerStyle,
 } from "@/components/ui/navigation-menu";
 
-import { PiBookOpenLight } from "react-icons/pi";
-import { IoDocumentTextOutline } from "react-icons/io5";
-import { TbTargetArrow } from "react-icons/tb";
-import { BsCalendarDate } from "react-icons/bs";
+import {
+  Home,
+  Baby,
+  Heart,
+  Clock3,
+  CalendarDays,
+  CalendarRange,
+  FileCheck2,
+  UserCheck,
+  BadgeCheck,
+  type LucideIcon,
+} from "lucide-react";
 
-const components: {
+type NavLink = {
+  icon: LucideIcon;
   title: string;
   href: string;
-  description: string
-}[] = [
-  {
-    title: "Alert Dialog",
-    href: "/docs/primitives/alert-dialog",
-    description:
-      "A modal dialog that interrupts the user with important content and expects a response.",
-  },
-  {
-    title: "Hover Card",
-    href: "/docs/primitives/hover-card",
-    description:
-      "For sighted users to preview content available behind a link.",
-  },
-  {
-    title: "Progress",
-    href: "/docs/primitives/progress",
-    description:
-      "Displays an indicator showing the completion progress of a task, typically displayed as a progress bar.",
-  },
-  {
-    title: "Scroll-area",
-    href: "/docs/primitives/scroll-area",
-    description: "Visually or semantically separates content.",
-  },
-  {
-    title: "Tabs",
-    href: "/docs/primitives/tabs",
-    description:
-      "A set of layered sections of content—known as tab panels—that are displayed one at a time.",
-  },
-  {
-    title: "Tooltip",
-    href: "/docs/primitives/tooltip",
-    description:
-      "A popup that displays information related to an element when the element receives keyboard focus or the mouse hovers over it.",
-  },
-]
+  description: string;
+};
 
-const verifications: {
-  title: string;
-  href: string;
-  description: string
-}[] = [
+const services: NavLink[] = [
   {
-    title: "Aadhaar Verification",
-    href: "/verifi/aadhaar-verification",
-    description: "The Helper's Aadhaar card is verified to ensure that the individual is who they claim to be, providing an added layer of security and trust.",
+    icon: Home,
+    title: "Maid services",
+    href: "/services/maid",
+    description:
+      "Reliable help for everyday household tasks, keeping your home running smoothly.",
   },
   {
-    title: "Crime Background Verification",
-    href: "/verifi/crime-background-verification",
-    description: "The individual's criminal history is checked to ensure they have no prior convictions that could pose a risk.",
+    icon: Baby,
+    title: "Babysitting",
+    href: "/services/babysitting",
+    description:
+      "Trusted support for your little ones when you need an extra pair of hands.",
   },
   {
-    title: "Address Verification",
-    href: "/verifi/address-verification",
-    description: "The individual's address is verified to ensure it is accurate and up-to-date.",
+    icon: Heart,
+    title: "Nanny care",
+    href: "/services/nanny",
+    description:
+      "Dedicated childcare and everyday support built around your family's routine.",
   },
-]
+];
+
+const plans: NavLink[] = [
+  {
+    icon: Clock3,
+    title: "Hourly",
+    href: "/plans/hourly",
+    description: "Flexible help when you need support for a few hours.",
+  },
+  {
+    icon: CalendarDays,
+    title: "Monthly",
+    href: "/plans/monthly",
+    description: "Reliable support as part of your regular routine.",
+  },
+  {
+    icon: CalendarRange,
+    title: "Yearly",
+    href: "/plans/yearly",
+    description: "Long-term care for your ongoing household needs.",
+  },
+];
+
+const verifications: NavLink[] = [
+  {
+    icon: FileCheck2,
+    title: "Aadhaar verification",
+    href: "/verification/aadhaar",
+    description:
+      "A helper's Aadhaar is verified to confirm identity and add a layer of trust.",
+  },
+  {
+    icon: UserCheck,
+    title: "Crime background verification",
+    href: "/verification/background",
+    description:
+      "Criminal history is checked to rule out prior convictions that pose a risk.",
+  },
+  {
+    icon: BadgeCheck,
+    title: "Address verification",
+    href: "/verification/address",
+    description: "A helper's address is confirmed to be accurate and current.",
+  },
+];
 
 export function NavigationMenuListItems() {
   return (
-    <NavigationMenu className="hidden lg:flex relative left-5">
+    <NavigationMenu className="hidden lg:flex">
       <NavigationMenuList>
         <NavigationMenuItem>
-          <NavigationMenuTrigger>Product</NavigationMenuTrigger>
+          <NavigationMenuTrigger>Services</NavigationMenuTrigger>
           <NavigationMenuContent>
-            <div className="flex">
-              <ul className="grid p-2 md:w-100 lg:w-60 hover:cursor-pointer border-r">
-                <div className="flex items-center gap-1 hover:bg-gray-400/10 p-1 rounded-sm">
-                  <IoDocumentTextOutline className="text-2xl mr-2 text-yellow-500" />
-                  <div>
-                    <a>Docs</a>
-                    <p className="text-gray-400 text-sm font-light">
-                      Simple & powerful
-                    </p>
-                  </div>
-                </div>
-                <div className="flex  items-center gap-1 hover:bg-gray-400/10 p-1 rounded-sm">
-                  <PiBookOpenLight className="text-2xl mr-2 text-red-500" />
-                  <div>
-                    <a>Wikis</a>
-                    <p className="text-gray-400 text-sm font-light">
-                      Centralize your knowledge
-                    </p>
-                  </div>
-                </div>
-                <div className="flex  items-center gap-1 hover:bg-gray-400/10 p-1 rounded-sm">
-                  <TbTargetArrow className="text-2xl mr-2 text-blue-600" />
-                  <div>
-                    <a>Projects</a>
-                    <p className="text-gray-400 text-sm font-light">
-                      For every team or size
-                    </p>
-                  </div>
-                </div>
-                <div className="flex  items-center gap-1 hover:bg-gray-400/10 p-1 rounded-sm">
-                  <BsCalendarDate className="text-2xl mr-2 text-orange-500" />
-                  <div>
-                    <a>Calendar</a>
-                    <p className="text-gray-400 text-sm font-light">
-                      Time and work, together
-                    </p>
-                  </div>
-                </div>
-              </ul>
-              <div className="flex">
-                <ul className="grid p-2 md:w-100 lg:w-60 hover:cursor-pointer border-r">
-                  <div className="flex  items-center gap-1 hover:bg-gray-400/10 p-1 rounded-sm">
-                    <div>
-                      <a>Template gallery</a>
-                      <p className="text-gray-400 text-sm font-light">
-                        Setup to get you started
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex  items-center gap-1 hover:bg-gray-400/10 p-1 rounded-sm">
-                    <div>
-                      <a>Customer story</a>
-                      <p className="text-gray-400 text-sm font-light">
-                        See how teams us RegNote
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex  items-center gap-1 hover:bg-gray-400/10 p-1 rounded-sm">
-                    <div>
-                      <a>Connections</a>
-                      <p className="text-gray-400 text-sm font-light">
-                        Connect your tools to RegNote
-                      </p>
-                    </div>
-                  </div>
-                </ul>
-              </div>
-              <div>
-                <ul className="grid p-2 md:w-100 lg:w-60 hover:cursor-pointer border-r">
-                  <div className="flex  items-center gap-1 hover:bg-gray-400/10 p-1 rounded-sm">
-                    <div>
-                      <a>Template gallery</a>
-                      <p className="text-gray-400 text-sm font-light">
-                        Setup to get you started
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex items-center hover:bg-gray-400/10 p-1 rounded-sm">
-                    <div>
-                      <a>Customer story</a>
-                      <p className="text-gray-400 text-sm font-light">
-                        See how teams us RegNote
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex items-center hover:bg-gray-400/10 p-1 rounded-sm">
-                    <div>
-                      <a>Connections</a>
-                      <p className="text-gray-400 text-sm font-light">
-                        Connect your tools to RegNote
-                      </p>
-                    </div>
-                  </div>
-                </ul>
-              </div>
-            </div>
-          </NavigationMenuContent>
-        </NavigationMenuItem>
-        <NavigationMenuItem>
-          <NavigationMenuTrigger>Download</NavigationMenuTrigger>
-          <NavigationMenuContent>
-            <div>
-              <ul className="grid w-100 gap-3 p-4 md:w-125 md:grid-row-4 lg:w-150">
-                <div className="flex items-center hover:bg-gray-400/10 p-1 rounded-sm">
-                  <div>
-                    <a>RegNote</a>
-                  </div>
-                </div>
-                <div className="flex items-center hover:bg-gray-400/10 p-1 rounded-sm">
-                  <div>
-                    <a>Calender</a>
-                  </div>
-                </div>
-                <div className="flex items-center hover:bg-gray-400/10 p-1 rounded-sm">
-                  <div>
-                    <a>Web clipper</a>
-                  </div>
-                </div>
-                <div className="flex items-center hover:bg-gray-400/10 p-1 rounded-sm">
-                  <div>
-                    <p className="text-gray-400 text-sm font-light">
-                      RegNote is always at home right
-                    </p>
-                    <a
-                      href=""
-                      className="underline text-gray-400 text-sm font-light"
-                    >
-                      in your browser
-                    </a>
-                  </div>
-                </div>
-              </ul>
-            </div>
-          </NavigationMenuContent>
-        </NavigationMenuItem>
-        <NavigationMenuItem>
-          <NavigationMenuTrigger>Solutions</NavigationMenuTrigger>
-          <NavigationMenuContent>
-            <ul className="grid w-100 gap-3 p-4 md:w-125 md:grid-cols-2 lg:w-150">
-              {components.map((component) => (
-                <ListItem
-                  key={component.title}
-                  title={component.title}
-                  href={component.href}
-                >
-                  {component.description}
-                </ListItem>
+            <ul className="grid w-105 gap-1 p-4 md:grid-cols-1">
+              {services.map((link) => (
+                <ListItem key={link.title} {...link} />
               ))}
             </ul>
           </NavigationMenuContent>
         </NavigationMenuItem>
+
+        <NavigationMenuItem>
+          <NavigationMenuTrigger>Plans</NavigationMenuTrigger>
+          <NavigationMenuContent>
+            <ul className="grid w-105 gap-1 p-4 md:grid-cols-1">
+              {plans.map((link) => (
+                <ListItem key={link.title} {...link} />
+              ))}
+            </ul>
+          </NavigationMenuContent>
+        </NavigationMenuItem>
+
         <NavigationMenuItem>
           <NavigationMenuTrigger>Verification</NavigationMenuTrigger>
           <NavigationMenuContent>
-            <ul className="grid w-100 gap-2 p-4 md:w-125 md:grid-cols-1 lg:w-150 ">
-              {verifications.map((verification) => (
-                <ListItem
-                  key={verification.title}
-                  title={verification.title}
-                  href={verification.href}
-                >
-                  {verification.description}
-                </ListItem>
+            <ul className="grid w-105 gap-1 p-4 md:grid-cols-1">
+              {verifications.map((link) => (
+                <ListItem key={link.title} {...link} />
               ))}
             </ul>
           </NavigationMenuContent>
         </NavigationMenuItem>
+
         <NavigationMenuItem>
-          <Link href="/docs" legacyBehavior passHref>
+          <Link href="/become-a-helper" legacyBehavior passHref>
+            <NavigationMenuLink className={navigationMenuTriggerStyle()}>
+              Become a helper
+            </NavigationMenuLink>
+          </Link>
+        </NavigationMenuItem>
+
+        <NavigationMenuItem>
+          <Link href="/pricing" legacyBehavior passHref>
             <NavigationMenuLink className={navigationMenuTriggerStyle()}>
               Pricing
             </NavigationMenuLink>
@@ -268,31 +157,38 @@ export function NavigationMenuListItems() {
         </NavigationMenuItem>
       </NavigationMenuList>
     </NavigationMenu>
-  )
+  );
 }
 
 const ListItem = React.forwardRef<
   React.ElementRef<"a">,
-  React.ComponentPropsWithoutRef<"a">
->(({ className, title, children, ...props }, ref) => {
+  React.ComponentPropsWithoutRef<"a"> & NavLink
+>(({ className, icon: Icon, title, description, ...props }, ref) => {
   return (
     <li>
       <NavigationMenuLink>
         <a
           ref={ref}
           className={cn(
-            "block select-none space-y-1 rounded-md p-3 leading-none no-underline outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground",
+            "flex items-start gap-3 rounded-lg p-3 leading-none no-underline outline-none transition-colors hover:bg-muted/60 focus:bg-muted/60",
             className
           )}
           {...props}
         >
-          <div className="text-sm font-medium leading-none">{title}</div>
-          <p className="line-clamp-2 text-sm leading-snug text-muted-foreground">
-            {children}
-          </p>
+          <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-border bg-muted/40">
+            <Icon className="h-4 w-4 text-foreground" strokeWidth={1.5} />
+          </div>
+          <div>
+            <div className="text-sm font-medium leading-none text-foreground">
+              {title}
+            </div>
+            <p className="mt-1.5 line-clamp-2 text-sm leading-snug text-muted-foreground">
+              {description}
+            </p>
+          </div>
         </a>
       </NavigationMenuLink>
     </li>
-  )
-})
-ListItem.displayName = "ListItem"
+  );
+});
+ListItem.displayName = "ListItem";
