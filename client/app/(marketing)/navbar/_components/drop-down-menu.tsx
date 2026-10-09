@@ -20,6 +20,7 @@ import {
   BadgeCheck,
   type LucideIcon,
 } from "lucide-react";
+import { useBecomeHelperHref } from "@/lib/auth/become-a-helper";
 
 interface MobileNavMenuProps {
   onClose: () => void;
@@ -50,6 +51,8 @@ const verifications: NavLink[] = [
 ];
 
 const MobileNavMenu = ({ onClose }: MobileNavMenuProps) => {
+  const becomeHelperHref = useBecomeHelperHref();
+  
   const handleLinkClick = () => {
     onClose();
   };
@@ -77,7 +80,7 @@ const MobileNavMenu = ({ onClose }: MobileNavMenuProps) => {
         />
 
         <Link
-          href="/become-a-helper"
+          href={becomeHelperHref}
           onClick={handleLinkClick}
           className="flex flex-1 items-center justify-between border-b py-6 text-xl text-foreground"
         >

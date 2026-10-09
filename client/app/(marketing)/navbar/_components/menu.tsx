@@ -27,6 +27,7 @@ import {
   BadgeCheck,
   type LucideIcon,
 } from "lucide-react";
+import { useBecomeHelperHref } from "@/lib/auth/become-a-helper";
 
 type NavLink = {
   icon: LucideIcon;
@@ -104,6 +105,8 @@ const verifications: NavLink[] = [
 ];
 
 export function NavigationMenuListItems() {
+  const becomeHelperHref = useBecomeHelperHref();
+
   return (
     <NavigationMenu className="hidden lg:flex">
       <NavigationMenuList>
@@ -141,11 +144,13 @@ export function NavigationMenuListItems() {
         </NavigationMenuItem>
 
         <NavigationMenuItem>
-          <Link href="/become-a-helper" legacyBehavior passHref>
-            <NavigationMenuLink className={navigationMenuTriggerStyle()}>
+          <NavigationMenuLink
+            className={navigationMenuTriggerStyle()}
+          >
+            <Link href={becomeHelperHref}>
               Become a helper
-            </NavigationMenuLink>
-          </Link>
+            </Link>
+          </NavigationMenuLink>
         </NavigationMenuItem>
 
         <NavigationMenuItem>
