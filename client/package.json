@@ -10,7 +10,7 @@
   },
   "dependencies": {
     "@base-ui/react": "^1.8.0",
-    "@clerk/nextjs": "^7.9.11",
+    "@clerk/nextjs": "^7.9.13",
     "@hugeicons/core-free-icons": "^4.3.5",
     "@hugeicons/react": "^1.1.10",
     "class-variance-authority": "^0.7.1",
