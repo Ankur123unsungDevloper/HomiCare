@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
+  Bell,
   CalendarCheck,
   Clock3,
   FileClock,
@@ -12,12 +13,16 @@ import {
   LogOut,
   Menu,
   MessageCircleQuestion,
+  Search,
   Settings,
   ShieldCheck,
   UserRound,
   X,
 } from "lucide-react";
 import { useState } from "react";
+
+import { Button } from "@/components/ui/button";
+import { Separator } from "@/components/ui/separator";
 
 const mainNavigation = [
   {
@@ -72,6 +77,18 @@ const accountNavigation = [
     icon: HelpCircle,
   },
 ];
+
+const allNavigation = [
+  ...mainNavigation,
+  ...careNavigation,
+  ...accountNavigation,
+];
+
+function isItemActive(pathname: string, href: string) {
+  return href === "/dashboard"
+    ? pathname === href
+    : pathname.startsWith(href);
+}
 
 export default function DashboardLayout({
   children,
@@ -150,9 +167,96 @@ export default function DashboardLayout({
 
       {/* Main Content */}
       <div className="lg:pl-64">
+        <DesktopTopBar pathname={pathname} />
+
         {children}
       </div>
     </div>
+  );
+}
+
+/* ---------------------------------------------
+   Desktop Top Bar
+--------------------------------------------- */
+
+function DesktopTopBar({ pathname }: { pathname: string }) {
+  // Pick the most specific nav item that matches the current URL
+  const current =
+    [...allNavigation]
+      .sort((a, b) => b.href.length - a.href.length)
+      .find((item) => isItemActive(pathname, item.href)) ??
+    allNavigation[0];
+
+  return (
+    <header className="sticky top-0 z-30 hidden h-16 border-b bg-background/95 backdrop-blur lg:block">
+      {/* Same max width and side padding as the page content, so edges line up */}
+      <div className="mx-auto flex h-full max-w-7xl items-center gap-4 px-8">
+        <div className="min-w-0">
+          <p className="text-[11px] font-medium uppercase tracking-[0.16em] text-muted-foreground">
+            Household Portal
+          </p>
+
+          <h1 className="truncate text-base font-semibold tracking-tight">
+            {current.label}
+          </h1>
+        </div>
+
+        <div className="ml-auto flex items-center gap-2">
+          <button
+            type="button"
+            className="hidden h-10 w-64 items-center gap-2 rounded-xl border bg-muted/40 px-3 text-sm text-muted-foreground transition-colors hover:bg-muted xl:flex"
+          >
+            <Search className="size-4" />
+
+            <span className="flex-1 text-left">
+              Search helpers, bookings…
+            </span>
+
+            <kbd className="rounded border bg-background px-1.5 py-0.5 text-[10px] font-medium">
+              ⌘K
+            </kbd>
+          </button>
+
+          <Button
+            variant="ghost"
+            size="icon"
+            className="xl:hidden"
+            aria-label="Search"
+          >
+            <Search className="size-5" />
+          </Button>
+
+          <Button
+            variant="ghost"
+            size="icon"
+            className="relative"
+            aria-label="Notifications"
+          >
+            <Bell className="size-5" />
+
+            <span className="absolute right-2.5 top-2.5 size-2 rounded-full bg-foreground ring-2 ring-background" />
+          </Button>
+
+          <Separator orientation="vertical" className="mx-1 h-6" />
+
+          <div className="flex items-center gap-3">
+            <div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-muted text-sm font-semibold">
+              AD
+            </div>
+
+            <div className="hidden min-w-0 2xl:block">
+              <p className="truncate text-sm font-semibold leading-none">
+                Ankur Das
+              </p>
+
+              <p className="mt-1 truncate text-xs text-muted-foreground">
+                Household account
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </header>
   );
 }
 
@@ -250,11 +354,7 @@ function NavigationGroup({
       <div className="space-y-1">
         {items.map((item) => {
           const Icon = item.icon;
-
-          const isActive =
-            item.href === "/dashboard"
-              ? pathname === item.href
-              : pathname.startsWith(item.href);
+          const isActive = isItemActive(pathname, item.href);
 
           return (
             <Link

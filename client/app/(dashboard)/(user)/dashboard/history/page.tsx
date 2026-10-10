@@ -74,7 +74,7 @@ const history: HistoryItem[] = [
 
 export default function HistoryPage() {
   return (
-    <div className="mx-auto w-full max-w-7xl space-y-8">
+    <div className="mx-auto w-full max-w-6xl space-y-8">
 
       {/* Header */}
       <div>

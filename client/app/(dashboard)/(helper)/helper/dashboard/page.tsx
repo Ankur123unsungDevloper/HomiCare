@@ -73,7 +73,7 @@ export default function HelperDashboardPage() {
     <div className="min-h-screen">
       <div className="space-y-8 p-5 sm:p-8 lg:p-10">
         {/* Header */}
-        <section className="flex flex-col justify-between gap-5 sm:flex-row sm:items-end">
+        <section className="flex flex-col gap-8 p-6 sm:p-8 lg:flex-row lg:items-center lg:justify-between">
           <div>
             <p className="mb-2 text-sm font-medium text-muted-foreground">
               Helper Dashboard
@@ -89,12 +89,15 @@ export default function HelperDashboardPage() {
             </p>
           </div>
 
-          <Button>
-            <Link href="/helper/dashboard/requests">
+          <Link
+            href="/helper/dashboard/requests"
+            className="flex flex-col gap-8 p-6 sm:p-8 lg:flex-row lg:items-center lg:justify-between"
+          >
+            <Button className="group inline-flex w-fit items-center gap-2 rounded-xl bg-black px-5 py-3 text-sm font-semibold text-white transition-transform hover:-translate-y-0.5">
               View requests
-              <ArrowRight className="size-4" />
+              <ArrowRight className="size-4 transition-transform group-hover:translate-x-1" />
+            </Button>
             </Link>
-          </Button>
         </section>
 
         {/* Today's service */}
@@ -159,16 +162,15 @@ export default function HelperDashboardPage() {
             </div>
 
             <div className="flex items-end border-t border-background/10 p-6 lg:w-64 lg:border-l lg:border-t-0 lg:p-8">
-              <Button
-               
-                variant="secondary"
-                className="w-full"
-              >
-                <Link href="/helper/dashboard/services">
-                  View service
-                  <ArrowRight className="size-4" />
-                </Link>
-              </Button>
+              <Link href="/helper/dashboard/services">
+                <Button
+                  variant="secondary"
+                  className="w-full"
+                >
+                    View service
+                    <ArrowRight className="size-4" />
+                </Button>
+              </Link>
             </div>
           </div>
         </section>
@@ -219,16 +221,15 @@ export default function HelperDashboardPage() {
                 </h2>
               </div>
 
-              <Button
-               
-                variant="ghost"
-                className="hidden sm:flex"
-              >
-                <Link href="/helper/dashboard/requests">
-                  View all
-                  <ArrowRight className="size-4" />
-                </Link>
-              </Button>
+              <Link href="/helper/dashboard/requests">
+                <Button
+                  variant="ghost"
+                  className="hidden sm:flex"
+                >
+                    View all
+                    <ArrowRight className="size-4" />
+                </Button>
+              </Link>
             </div>
 
             <div className="divide-y rounded-2xl border">
@@ -283,29 +284,28 @@ export default function HelperDashboardPage() {
                       </div>
                     </div>
 
-                    <Button variant="outline" className="shrink-0">
-                      <Link
-                        href={`/helper/dashboard/requests/${request.id}`}
-                      >
-                        Review
-                        <ChevronRight className="size-4" />
-                      </Link>
-                    </Button>
+                    <Link
+                      href={`/helper/dashboard/requests/${request.id}`}
+                    >
+                      <Button variant="outline" className="shrink-0">
+                          Review
+                          <ChevronRight className="size-4" />
+                      </Button>
+                    </Link>
                   </div>
                 </div>
               ))}
             </div>
 
+              <Link href="/helper/dashboard/requests">
             <Button
-             
               variant="ghost"
               className="mt-3 w-full sm:hidden"
             >
-              <Link href="/helper/dashboard/requests">
                 View all requests
                 <ArrowRight className="size-4" />
-              </Link>
             </Button>
+              </Link>
           </section>
 
           {/* Right column */}
@@ -339,15 +339,14 @@ export default function HelperDashboardPage() {
                 <VerificationItem label="Contact information" />
               </div>
 
-              <Button
-               
-                variant="outline"
-                className="mt-5 w-full"
-              >
-                <Link href="/helper/dashboard/profile">
-                  Manage profile
-                </Link>
-              </Button>
+              <Link href="/helper/dashboard/profile">
+                <Button
+                  variant="outline"
+                  className="group inline-flex w-fit items-center gap-2 rounded-xl bg-background px-5 py-3 text-sm font-semibold text-foreground transition-transform hover:-translate-y-0.5"
+                >
+                    Manage profile
+                </Button>
+              </Link>
             </section>
 
             {/* Rating */}
@@ -403,12 +402,12 @@ export default function HelperDashboardPage() {
               </h2>
             </div>
 
-            <Button variant="ghost">
-              <Link href="/helper/dashboard/schedule">
+            <Link href="/helper/dashboard/schedule">
+              <Button variant="ghost">
                 View schedule
                 <ArrowRight className="size-4" />
-              </Link>
-            </Button>
+              </Button>
+            </Link>
           </div>
 
           <div className="grid gap-3">
@@ -482,11 +481,11 @@ export default function HelperDashboardPage() {
               </p>
             </div>
 
-            <Button variant="outline">
-              <Link href="/helper/dashboard/profile">
+            <Link href="/helper/dashboard/profile">
+              <Button variant="outline">
                 Update profile
-              </Link>
-            </Button>
+              </Button>
+            </Link>
           </div>
         </section>
       </div>

@@ -11,6 +11,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import { motion } from "framer-motion";
+import { Button } from "@/components/ui/button";
 
 const services = [
   {
@@ -86,10 +87,10 @@ export default function DashboardPage() {
               </div>
             </div>
 
-            <button className="group inline-flex w-fit items-center gap-2 rounded-xl bg-background px-5 py-3 text-sm font-semibold text-foreground transition-transform hover:-translate-y-0.5">
+            <Button className="group inline-flex w-fit items-center gap-2 rounded-xl bg-background px-5 py-3 text-sm font-semibold text-foreground transition-transform hover:-translate-y-0.5 hover:bg-gray-300">
               View booking
               <ArrowRight className="size-4 transition-transform group-hover:translate-x-1" />
-            </button>
+            </Button>
           </div>
         </motion.section>
 

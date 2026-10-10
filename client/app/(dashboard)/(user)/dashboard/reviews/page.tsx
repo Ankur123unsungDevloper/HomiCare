@@ -87,7 +87,7 @@ function Rating({ rating }: { rating: number }) {
 
 export default function ReviewsPage() {
   return (
-    <div className="mx-auto w-full max-w-7xl space-y-8">
+    <div className="mx-auto w-full max-w-6xl space-y-8">
 
       {/* Header */}
       <div>
