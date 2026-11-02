@@ -8,6 +8,7 @@ import {
   ChevronRight,
   Globe2,
   LockKeyhole,
+  LogOut,
   Mail,
   Save,
   ShieldCheck,
@@ -19,6 +20,8 @@ import { Input } from "@/components/ui/input"
 import { Separator } from "@/components/ui/separator"
 import { Switch } from "@/components/ui/switch"
 import { Label } from "@/components/ui/label"
+import SignOut from "@/lib/auth/sign-out-button"
+
 
 export default function AdminSettingsPage() {
   const [saved, setSaved] = React.useState(false)
@@ -288,6 +291,26 @@ export default function AdminSettingsPage() {
           Save Changes
         </Button>
       </div>
+
+      {/* Sign Out */}
+      <section className="flex flex-col gap-4 rounded-xl border border-destructive/20 bg-card p-5 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-start gap-3">
+          <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-destructive/10">
+            <LogOut className="size-5 text-destructive" />
+          </div>
+
+          <div>
+            <h2 className="font-semibold">Sign out</h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Sign out of your HomiCare administrator account on this device.
+            </p>
+          </div>
+        </div>
+
+        <div className="[&>button]:inline-flex [&>button]:h-9 [&>button]:items-center [&>button]:justify-center [&>button]:rounded-md [&>button]:bg-destructive [&>button]:px-4 [&>button]:text-sm [&>button]:font-medium [&>button]:text-destructive-foreground [&>button]:transition-colors [&>button]:hover:bg-destructive/90">
+          <SignOut />
+        </div>
+      </section>
 
       {/* Admin note */}
       <div className="rounded-xl border bg-muted/30 p-4">

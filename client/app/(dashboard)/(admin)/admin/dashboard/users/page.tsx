@@ -1,6 +1,7 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
+import { useAuth } from "@clerk/nextjs"
 import {
   ChevronLeft,
   ChevronRight,
@@ -27,107 +28,16 @@ type UserRole = "Household" | "Helper" | "Admin"
 type UserStatus = "Active" | "Pending" | "Suspended"
 
 type User = {
-  id: number
+  id: string
   name: string
   email: string
   phone: string
   role: UserRole
-  status: UserStatus
+  status: UserStatus | ""
   location: string
   joined: string
   verified: boolean
 }
-
-const users: User[] = [
-  {
-    id: 1,
-    name: "Ankur Das",
-    email: "ankur@example.com",
-    phone: "+91 98XXXXXX21",
-    role: "Household",
-    status: "Active",
-    location: "Andheri West, Mumbai",
-    joined: "Sep 12, 2026",
-    verified: true,
-  },
-  {
-    id: 2,
-    name: "Priya Sharma",
-    email: "priya@example.com",
-    phone: "+91 97XXXXXX42",
-    role: "Helper",
-    status: "Active",
-    location: "Andheri West, Mumbai",
-    joined: "Aug 18, 2026",
-    verified: true,
-  },
-  {
-    id: 3,
-    name: "Rahul Mehta",
-    email: "rahul@example.com",
-    phone: "+91 98XXXXXX13",
-    role: "Household",
-    status: "Active",
-    location: "Powai, Mumbai",
-    joined: "Aug 05, 2026",
-    verified: true,
-  },
-  {
-    id: 4,
-    name: "Sunita Patil",
-    email: "sunita@example.com",
-    phone: "+91 96XXXXXX72",
-    role: "Helper",
-    status: "Pending",
-    location: "Powai, Mumbai",
-    joined: "Oct 03, 2026",
-    verified: false,
-  },
-  {
-    id: 5,
-    name: "Neha Kapoor",
-    email: "neha@example.com",
-    phone: "+91 99XXXXXX54",
-    role: "Household",
-    status: "Active",
-    location: "Bandra West, Mumbai",
-    joined: "Jul 21, 2026",
-    verified: true,
-  },
-  {
-    id: 6,
-    name: "Meena Joshi",
-    email: "meena@example.com",
-    phone: "+91 95XXXXXX38",
-    role: "Helper",
-    status: "Active",
-    location: "Bandra West, Mumbai",
-    joined: "Jun 14, 2026",
-    verified: true,
-  },
-  {
-    id: 7,
-    name: "Aarav Shah",
-    email: "aarav@example.com",
-    phone: "+91 94XXXXXX67",
-    role: "Household",
-    status: "Pending",
-    location: "Andheri East, Mumbai",
-    joined: "Oct 06, 2026",
-    verified: false,
-  },
-  {
-    id: 8,
-    name: "Karan Patel",
-    email: "karan@example.com",
-    phone: "+91 93XXXXXX19",
-    role: "Helper",
-    status: "Suspended",
-    location: "Andheri East, Mumbai",
-    joined: "May 28, 2026",
-    verified: true,
-  },
-]
 
 const roleFilters = ["All", "Household", "Helper", "Admin"] as const
 const statusFilters = ["All", "Active", "Pending", "Suspended"] as const
@@ -161,12 +71,9 @@ function RoleBadge({ role }: { role: UserRole }) {
 
 function StatusBadge({ status }: { status: UserStatus }) {
   const classes = {
-    Active:
-      "border-emerald-200 bg-emerald-50 text-emerald-700",
-    Pending:
-      "border-amber-200 bg-amber-50 text-amber-700",
-    Suspended:
-      "border-red-200 bg-red-50 text-red-700",
+    Active: "border-emerald-200 bg-emerald-50 text-emerald-700",
+    Pending: "border-amber-200 bg-amber-50 text-amber-700",
+    Suspended: "border-red-200 bg-red-50 text-red-700",
   }
 
   return (
@@ -195,11 +102,90 @@ function UserAvatar({ name }: { name: string }) {
 }
 
 export default function AdminUsersPage() {
+  const { getToken } = useAuth()
+
+  const [users, setUsers] = useState<User[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState("")
+
   const [search, setSearch] = useState("")
   const [role, setRole] =
     useState<(typeof roleFilters)[number]>("All")
   const [status, setStatus] =
     useState<(typeof statusFilters)[number]>("All")
+
+  useEffect(() => {
+    async function fetchUsers() {
+      try {
+        setLoading(true)
+        setError("")
+
+        const token = await getToken()
+
+        if (!token) {
+          throw new Error("Authentication required")
+        }
+
+        const API_URL =
+          process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:5000"
+
+        const response = await fetch(`${API_URL}/api/admin/users`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        })
+
+        const data = await response.json()
+
+        if (!response.ok || !data.success) {
+          throw new Error(data.message || "Failed to fetch users")
+        }
+
+        const formattedUsers: User[] = data.users.map(
+          (user: {
+            id: string
+            firstName: string | null
+            lastName: string | null
+            email: string
+            phone: string | null
+            role: "USER" | "HELPER"
+            createdAt: string
+          }) => ({
+            id: user.id,
+            name:
+              [user.firstName, user.lastName]
+                .filter(Boolean)
+                .join(" ") || "",
+            email: user.email || "",
+            phone: user.phone || "",
+            role: user.role === "HELPER" ? "Helper" : "Household",
+            status: "",
+            location: "",
+            joined: user.createdAt
+              ? new Date(user.createdAt).toLocaleDateString("en-US", {
+                  month: "short",
+                  day: "2-digit",
+                  year: "numeric",
+                })
+              : "",
+            verified: false,
+          })
+        )
+
+        setUsers(formattedUsers)
+      } catch (err) {
+        console.error("Users fetch error:", err)
+
+        setError(
+          err instanceof Error ? err.message : "Something went wrong"
+        )
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchUsers()
+  }, [getToken])
 
   const filteredUsers = useMemo(() => {
     return users.filter((user) => {
@@ -211,15 +197,14 @@ export default function AdminUsersPage() {
         user.email.toLowerCase().includes(searchValue) ||
         user.location.toLowerCase().includes(searchValue)
 
-      const matchesRole =
-        role === "All" || user.role === role
+      const matchesRole = role === "All" || user.role === role
 
       const matchesStatus =
         status === "All" || user.status === status
 
       return matchesSearch && matchesRole && matchesStatus
     })
-  }, [search, role, status])
+  }, [users, search, role, status])
 
   const totalUsers = users.length
   const householdCount = users.filter(
@@ -231,6 +216,8 @@ export default function AdminUsersPage() {
   const pendingCount = users.filter(
     (user) => user.status === "Pending"
   ).length
+
+  const showList = !loading && !error
 
   return (
     <div className="space-y-8 pb-10">
@@ -260,42 +247,24 @@ export default function AdminUsersPage() {
       {/* Overview */}
       <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <div className="rounded-2xl border bg-card p-5">
-          <p className="text-sm text-muted-foreground">
-            Total users
-          </p>
-
-          <p className="mt-2 text-3xl font-bold">
-            {totalUsers}
-          </p>
-
+          <p className="text-sm text-muted-foreground">Total users</p>
+          <p className="mt-2 text-3xl font-bold">{totalUsers}</p>
           <p className="mt-1 text-xs text-muted-foreground">
             All registered accounts
           </p>
         </div>
 
         <div className="rounded-2xl border bg-card p-5">
-          <p className="text-sm text-muted-foreground">
-            Households
-          </p>
-
-          <p className="mt-2 text-3xl font-bold">
-            {householdCount}
-          </p>
-
+          <p className="text-sm text-muted-foreground">Households</p>
+          <p className="mt-2 text-3xl font-bold">{householdCount}</p>
           <p className="mt-1 text-xs text-muted-foreground">
             Customers using HomiCare
           </p>
         </div>
 
         <div className="rounded-2xl border bg-card p-5">
-          <p className="text-sm text-muted-foreground">
-            Helpers
-          </p>
-
-          <p className="mt-2 text-3xl font-bold">
-            {helperCount}
-          </p>
-
+          <p className="text-sm text-muted-foreground">Helpers</p>
+          <p className="mt-2 text-3xl font-bold">{helperCount}</p>
           <p className="mt-1 text-xs text-muted-foreground">
             Registered care providers
           </p>
@@ -305,11 +274,7 @@ export default function AdminUsersPage() {
           <p className="text-sm text-muted-foreground">
             Pending accounts
           </p>
-
-          <p className="mt-2 text-3xl font-bold">
-            {pendingCount}
-          </p>
-
+          <p className="mt-2 text-3xl font-bold">{pendingCount}</p>
           <p className="mt-1 text-xs text-muted-foreground">
             Require administrative attention
           </p>
@@ -380,9 +345,7 @@ export default function AdminUsersPage() {
       <section className="overflow-hidden rounded-2xl border bg-card">
         <div className="flex items-center justify-between border-b px-5 py-4">
           <div>
-            <h2 className="font-semibold">
-              User directory
-            </h2>
+            <h2 className="font-semibold">User directory</h2>
 
             <p className="mt-1 text-xs text-muted-foreground">
               {filteredUsers.length} users shown
@@ -394,198 +357,206 @@ export default function AdminUsersPage() {
           </Button>
         </div>
 
+        {/* Loading state */}
+        {loading && (
+          <div className="px-5 py-16 text-center text-sm text-muted-foreground">
+            Loading users...
+          </div>
+        )}
+
+        {/* Error state */}
+        {error && !loading && (
+          <div className="px-5 py-16 text-center">
+            <p className="text-sm text-red-600">{error}</p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Please refresh the page and try again.
+            </p>
+          </div>
+        )}
+
         {/* Desktop table */}
-        <div className="hidden overflow-x-auto md:block">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b bg-muted/30 text-left">
-                <th className="px-5 py-3 font-medium text-muted-foreground">
-                  User
-                </th>
-                <th className="px-5 py-3 font-medium text-muted-foreground">
-                  Role
-                </th>
-                <th className="px-5 py-3 font-medium text-muted-foreground">
-                  Location
-                </th>
-                <th className="px-5 py-3 font-medium text-muted-foreground">
-                  Status
-                </th>
-                <th className="px-5 py-3 font-medium text-muted-foreground">
-                  Joined
-                </th>
-                <th className="w-12 px-3 py-3" />
-              </tr>
-            </thead>
+        {showList && (
+          <div className="hidden overflow-x-auto md:block">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b bg-muted/30 text-left">
+                  <th className="px-5 py-3 font-medium text-muted-foreground">
+                    User
+                  </th>
+                  <th className="px-5 py-3 font-medium text-muted-foreground">
+                    Role
+                  </th>
+                  <th className="px-5 py-3 font-medium text-muted-foreground">
+                    Location
+                  </th>
+                  <th className="px-5 py-3 font-medium text-muted-foreground">
+                    Status
+                  </th>
+                  <th className="px-5 py-3 font-medium text-muted-foreground">
+                    Joined
+                  </th>
+                  <th className="w-12 px-3 py-3" />
+                </tr>
+              </thead>
 
-            <tbody>
-              {filteredUsers.map((user) => (
-                <tr
-                  key={user.id}
-                  className="border-b last:border-b-0 hover:bg-muted/20"
-                >
-                  <td className="px-5 py-4">
-                    <div className="flex items-center gap-3">
-                      <UserAvatar name={user.name} />
+              <tbody>
+                {filteredUsers.map((user) => (
+                  <tr
+                    key={user.id}
+                    className="border-b last:border-b-0 hover:bg-muted/20"
+                  >
+                    <td className="px-5 py-4">
+                      <div className="flex items-center gap-3">
+                        <UserAvatar name={user.name} />
 
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-1.5">
-                          <p className="font-medium">
-                            {user.name}
-                          </p>
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-1.5">
+                            <p className="font-medium">{user.name}</p>
 
-                          {user.verified && (
-                            <ShieldCheck className="h-3.5 w-3.5 text-emerald-600" />
-                          )}
-                        </div>
+                            {user.verified && (
+                              <ShieldCheck className="h-3.5 w-3.5 text-emerald-600" />
+                            )}
+                          </div>
 
-                        <div className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground">
-                          <Mail className="h-3 w-3" />
-                          {user.email}
+                          <div className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground">
+                            <Mail className="h-3 w-3" />
+                            {user.email}
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  </td>
+                    </td>
 
-                  <td className="px-5 py-4">
-                    <RoleBadge role={user.role} />
-                  </td>
+                    <td className="px-5 py-4">
+                      <RoleBadge role={user.role} />
+                    </td>
 
-                  <td className="px-5 py-4 text-muted-foreground">
-                    {user.location}
-                  </td>
+                    <td className="px-5 py-4 text-muted-foreground">
+                      {user.location}
+                    </td>
 
-                  <td className="px-5 py-4">
-                    <StatusBadge status={user.status} />
-                  </td>
+                    <td className="px-5 py-4">
+                      {user.status && (
+                        <StatusBadge status={user.status} />
+                      )}
+                    </td>
 
-                  <td className="px-5 py-4 text-muted-foreground">
-                    {user.joined}
-                  </td>
+                    <td className="px-5 py-4 text-muted-foreground">
+                      {user.joined}
+                    </td>
 
-                  <td className="px-3 py-4">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8"
-                        >
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
+                    <td className="px-3 py-4">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8"
+                          >
+                            <MoreHorizontal className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
 
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem>
-                          View profile
-                        </DropdownMenuItem>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem>View profile</DropdownMenuItem>
 
-                        <DropdownMenuItem>
-                          View activity
-                        </DropdownMenuItem>
+                          <DropdownMenuItem>View activity</DropdownMenuItem>
 
-                        <DropdownMenuSeparator />
+                          <DropdownMenuSeparator />
 
-                        {user.status === "Suspended" ? (
-                          <DropdownMenuItem>
-                            Restore account
-                          </DropdownMenuItem>
-                        ) : (
-                          <DropdownMenuItem>
-                            Suspend account
-                          </DropdownMenuItem>
-                        )}
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+                          {user.status === "Suspended" ? (
+                            <DropdownMenuItem>
+                              Restore account
+                            </DropdownMenuItem>
+                          ) : (
+                            <DropdownMenuItem>
+                              Suspend account
+                            </DropdownMenuItem>
+                          )}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
 
         {/* Mobile list */}
-        <div className="divide-y md:hidden">
-          {filteredUsers.map((user) => (
-            <div
-              key={user.id}
-              className="p-4"
-            >
-              <div className="flex items-start gap-3">
-                <UserAvatar name={user.name} />
+        {showList && (
+          <div className="divide-y md:hidden">
+            {filteredUsers.map((user) => (
+              <div key={user.id} className="p-4">
+                <div className="flex items-start gap-3">
+                  <UserAvatar name={user.name} />
 
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center justify-between gap-2">
-                    <div className="flex items-center gap-1.5">
-                      <p className="font-medium">
-                        {user.name}
-                      </p>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-1.5">
+                        <p className="font-medium">{user.name}</p>
 
-                      {user.verified && (
-                        <ShieldCheck className="h-3.5 w-3.5 text-emerald-600" />
+                        {user.verified && (
+                          <ShieldCheck className="h-3.5 w-3.5 text-emerald-600" />
+                        )}
+                      </div>
+
+                      <DropdownMenu>
+                        <DropdownMenuTrigger>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8"
+                          >
+                            <MoreHorizontal className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem>View profile</DropdownMenuItem>
+
+                          <DropdownMenuItem>View activity</DropdownMenuItem>
+
+                          <DropdownMenuSeparator />
+
+                          <DropdownMenuItem>
+                            {user.status === "Suspended"
+                              ? "Restore account"
+                              : "Suspend account"}
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
+
+                    <p className="mt-1 truncate text-xs text-muted-foreground">
+                      {user.email}
+                    </p>
+
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      <RoleBadge role={user.role} />
+                      {user.status && (
+                        <StatusBadge status={user.status} />
                       )}
                     </div>
 
-                    <DropdownMenu>
-                      <DropdownMenuTrigger>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8"
-                        >
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem>
-                          View profile
-                        </DropdownMenuItem>
-
-                        <DropdownMenuItem>
-                          View activity
-                        </DropdownMenuItem>
-
-                        <DropdownMenuSeparator />
-
-                        <DropdownMenuItem>
-                          {user.status === "Suspended"
-                            ? "Restore account"
-                            : "Suspend account"}
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </div>
-
-                  <p className="mt-1 truncate text-xs text-muted-foreground">
-                    {user.email}
-                  </p>
-
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    <RoleBadge role={user.role} />
-                    <StatusBadge status={user.status} />
-                  </div>
-
-                  <div className="mt-3 space-y-1 text-xs text-muted-foreground">
-                    <p>{user.location}</p>
-                    <p>Joined {user.joined}</p>
+                    <div className="mt-3 space-y-1 text-xs text-muted-foreground">
+                      <p>{user.location}</p>
+                      <p>Joined {user.joined}</p>
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
 
         {/* Empty state */}
-        {filteredUsers.length === 0 && (
+        {!loading && !error && filteredUsers.length === 0 && (
           <div className="flex flex-col items-center justify-center px-6 py-16 text-center">
             <div className="flex h-12 w-12 items-center justify-center rounded-full bg-muted">
               <Search className="h-5 w-5 text-muted-foreground" />
             </div>
 
-            <h3 className="mt-4 font-semibold">
-              No users found
-            </h3>
+            <h3 className="mt-4 font-semibold">No users found</h3>
 
             <p className="mt-1 max-w-sm text-sm text-muted-foreground">
               Try changing your search or removing one of the
@@ -607,11 +578,10 @@ export default function AdminUsersPage() {
         )}
 
         {/* Pagination */}
-        {filteredUsers.length > 0 && (
+        {showList && filteredUsers.length > 0 && (
           <div className="flex items-center justify-between border-t px-5 py-4">
             <p className="text-xs text-muted-foreground">
-              Showing 1–{filteredUsers.length} of{" "}
-              {filteredUsers.length}
+              Showing 1–{filteredUsers.length} of {filteredUsers.length}
             </p>
 
             <div className="flex items-center gap-1">
@@ -643,9 +613,7 @@ export default function AdminUsersPage() {
           <ShieldCheck className="mt-0.5 h-5 w-5 shrink-0" />
 
           <div>
-            <h3 className="font-semibold">
-              User management
-            </h3>
+            <h3 className="font-semibold">User management</h3>
 
             <p className="mt-1 text-sm leading-6 text-muted-foreground">
               Admin actions should be permission-protected. Account

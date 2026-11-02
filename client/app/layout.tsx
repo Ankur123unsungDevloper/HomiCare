@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+
 import "./globals.css";
 
 import { siteConfig } from "@/config/site";
@@ -6,6 +7,8 @@ import { siteConfig } from "@/config/site";
 import { Manrope } from "next/font/google";
 
 import { ClerkProvider } from "@clerk/nextjs";
+
+import UserSync from "@/components/auth/user-sync";
 
 const manrope = Manrope({
   variable: "--font-manrope",
@@ -43,6 +46,7 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <body className={manrope.variable}>
         <ClerkProvider>
+          <UserSync />
           {children}
         </ClerkProvider>
       </body>

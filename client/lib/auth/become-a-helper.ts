@@ -6,7 +6,7 @@ import { ROLE_ROUTES, ROLES } from "@/lib/auth/roles"
 
 // Where a signed-in household user should land to apply as a helper.
 // Change this to whatever route you build for the helper application.
-const HELPER_ONBOARDING = "/helper/dashboard"
+const HELPER_ONBOARDING = "/become-a-helper"
 
 export function useBecomeHelperHref() {
   const { isLoaded, isSignedIn, user } = useUser()

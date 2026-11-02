@@ -1,7 +1,8 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import Link from "next/link"
+import { useAuth } from "@clerk/nextjs"
 import {
   ArrowRight,
   CheckCircle2,
@@ -26,127 +27,32 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 
-type VerificationStatus =
-  | "Pending"
-  | "Verified"
-  | "Rejected"
-
-type HelperStatus =
-  | "Active"
-  | "Pending"
-  | "Suspended"
+type VerificationStatus = "Pending" | "Verified" | "Rejected"
+type HelperStatus = "Active" | "Pending" | "Suspended"
 
 type Helper = {
-  id: number
+  id: string
   name: string
   service: string
   location: string
   experience: string
-  rating: number
-  reviews: number
+  rating: number | null
+  reviews: number | null
   verification: VerificationStatus
-  status: HelperStatus
+  status: HelperStatus | ""
   submitted: string
 }
 
-const helpers: Helper[] = [
-  {
-    id: 1,
-    name: "Priya Sharma",
-    service: "Nanny Care",
-    location: "Andheri West, Mumbai",
-    experience: "5 years",
-    rating: 4.9,
-    reviews: 38,
-    verification: "Verified",
-    status: "Active",
-    submitted: "Aug 18, 2026",
-  },
-  {
-    id: 2,
-    name: "Sunita Patil",
-    service: "Maid Services",
-    location: "Powai, Mumbai",
-    experience: "7 years",
-    rating: 4.8,
-    reviews: 42,
-    verification: "Pending",
-    status: "Pending",
-    submitted: "Oct 3, 2026",
-  },
-  {
-    id: 3,
-    name: "Meena Joshi",
-    service: "Maid Services",
-    location: "Bandra West, Mumbai",
-    experience: "4 years",
-    rating: 4.7,
-    reviews: 29,
-    verification: "Verified",
-    status: "Active",
-    submitted: "Jun 14, 2026",
-  },
-  {
-    id: 4,
-    name: "Kavita Rao",
-    service: "Babysitting",
-    location: "Andheri East, Mumbai",
-    experience: "3 years",
-    rating: 4.6,
-    reviews: 21,
-    verification: "Pending",
-    status: "Pending",
-    submitted: "Oct 6, 2026",
-  },
-  {
-    id: 5,
-    name: "Meena Kapoor",
-    service: "Nanny Care",
-    location: "Goregaon West, Mumbai",
-    experience: "6 years",
-    rating: 4.9,
-    reviews: 47,
-    verification: "Pending",
-    status: "Pending",
-    submitted: "Oct 5, 2026",
-  },
-  {
-    id: 6,
-    name: "Anita Verma",
-    service: "Babysitting",
-    location: "Andheri East, Mumbai",
-    experience: "5 years",
-    rating: 4.8,
-    reviews: 34,
-    verification: "Verified",
-    status: "Active",
-    submitted: "Jul 9, 2026",
-  },
-  {
-    id: 7,
-    name: "Karan Patel",
-    service: "Maid Services",
-    location: "Thane West, Mumbai",
-    experience: "8 years",
-    rating: 4.5,
-    reviews: 18,
-    verification: "Verified",
-    status: "Suspended",
-    submitted: "May 28, 2026",
-  },
-  {
-    id: 8,
-    name: "Rita Deshmukh",
-    service: "Maid Services",
-    location: "Vikhroli, Mumbai",
-    experience: "2 years",
-    rating: 4.4,
-    reviews: 12,
-    verification: "Rejected",
-    status: "Pending",
-    submitted: "Sep 30, 2026",
-  },
-]
+type HelperApplication = {
+  id: string
+  fullName?: string | null
+  services?: string[] | null
+  area?: string | null
+  city?: string | null
+  experience?: string | number | null
+  status?: string | null
+  createdAt?: string | null
+}
 
 const verificationFilters = [
   "All",
@@ -155,11 +61,7 @@ const verificationFilters = [
   "Rejected",
 ] as const
 
-function VerificationBadge({
-  status,
-}: {
-  status: VerificationStatus
-}) {
+function VerificationBadge({ status }: { status: VerificationStatus }) {
   if (status === "Verified") {
     return (
       <Badge
@@ -195,18 +97,11 @@ function VerificationBadge({
   )
 }
 
-function StatusBadge({
-  status,
-}: {
-  status: HelperStatus
-}) {
+function StatusBadge({ status }: { status: HelperStatus }) {
   const classes = {
-    Active:
-      "border-emerald-200 bg-emerald-50 text-emerald-700",
-    Pending:
-      "border-amber-200 bg-amber-50 text-amber-700",
-    Suspended:
-      "border-red-200 bg-red-50 text-red-700",
+    Active: "border-emerald-200 bg-emerald-50 text-emerald-700",
+    Pending: "border-amber-200 bg-amber-50 text-amber-700",
+    Suspended: "border-red-200 bg-red-50 text-red-700",
   }
 
   return (
@@ -219,11 +114,7 @@ function StatusBadge({
   )
 }
 
-function HelperAvatar({
-  name,
-}: {
-  name: string
-}) {
+function HelperAvatar({ name }: { name: string }) {
   const initials = name
     .split(" ")
     .map((part) => part[0])
@@ -239,9 +130,100 @@ function HelperAvatar({
 }
 
 export default function AdminHelpersPage() {
+  const { getToken } = useAuth()
+
+  const [helpers, setHelpers] = useState<Helper[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState("")
+
   const [search, setSearch] = useState("")
   const [verification, setVerification] =
     useState<(typeof verificationFilters)[number]>("All")
+
+  useEffect(() => {
+    async function fetchHelpers() {
+      try {
+        setLoading(true)
+        setError("")
+
+        const token = await getToken()
+
+        if (!token) {
+          throw new Error("Authentication required")
+        }
+
+        const API_URL =
+          process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:5000"
+
+        const response = await fetch(
+          `${API_URL}/api/admin/helper-applications`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        )
+
+        const data = await response.json()
+
+        if (!response.ok || !data.success) {
+          throw new Error(
+            data.message || "Failed to fetch helper applications"
+          )
+        }
+
+        const formattedHelpers: Helper[] = data.applications.map(
+          (application: HelperApplication) => {
+            const verification: VerificationStatus =
+              application.status === "VERIFIED" ||
+              application.status === "APPROVED"
+                ? "Verified"
+                : application.status === "REJECTED"
+                  ? "Rejected"
+                  : "Pending"
+
+            return {
+              id: application.id,
+              name: application.fullName || "",
+              service: application.services?.join(", ") || "",
+              location: [application.area, application.city]
+                .filter(Boolean)
+                .join(", "),
+              experience: application.experience
+                ? `${application.experience} years`
+                : "",
+              rating: null,
+              reviews: null,
+              verification,
+              status: "",
+              submitted: application.createdAt
+                ? new Date(application.createdAt).toLocaleDateString(
+                    "en-US",
+                    {
+                      month: "short",
+                      day: "2-digit",
+                      year: "numeric",
+                    }
+                  )
+                : "",
+            }
+          }
+        )
+
+        setHelpers(formattedHelpers)
+      } catch (err) {
+        console.error("Helper applications fetch error:", err)
+
+        setError(
+          err instanceof Error ? err.message : "Something went wrong"
+        )
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchHelpers()
+  }, [getToken])
 
   const filteredHelpers = useMemo(() => {
     return helpers.filter((helper) => {
@@ -254,12 +236,11 @@ export default function AdminHelpersPage() {
         helper.location.toLowerCase().includes(query)
 
       const matchesVerification =
-        verification === "All" ||
-        helper.verification === verification
+        verification === "All" || helper.verification === verification
 
       return matchesSearch && matchesVerification
     })
-  }, [search, verification])
+  }, [helpers, search, verification])
 
   const totalHelpers = helpers.length
 
@@ -274,6 +255,8 @@ export default function AdminHelpersPage() {
   const rejectedHelpers = helpers.filter(
     (helper) => helper.verification === "Rejected"
   ).length
+
+  const showList = !loading && !error
 
   return (
     <div className="space-y-8 pb-10">
@@ -294,12 +277,12 @@ export default function AdminHelpersPage() {
           </p>
         </div>
 
-        <Button  variant="outline">
-          <Link href="/admin/dashboard/users">
+        <Link href="/admin/dashboard/users">
+          <Button variant="outline">
             View all users
             <ArrowRight className="ml-2 h-4 w-4" />
-          </Link>
-        </Button>
+          </Button>
+        </Link>
       </section>
 
       {/* Stats */}
@@ -313,9 +296,7 @@ export default function AdminHelpersPage() {
             Total helpers
           </p>
 
-          <p className="mt-1 text-3xl font-bold">
-            {totalHelpers}
-          </p>
+          <p className="mt-1 text-3xl font-bold">{totalHelpers}</p>
 
           <p className="mt-1 text-xs text-muted-foreground">
             Registered care providers
@@ -349,9 +330,7 @@ export default function AdminHelpersPage() {
             Verified helpers
           </p>
 
-          <p className="mt-1 text-3xl font-bold">
-            {verifiedHelpers}
-          </p>
+          <p className="mt-1 text-3xl font-bold">{verifiedHelpers}</p>
 
           <p className="mt-1 text-xs text-muted-foreground">
             Approved profiles
@@ -363,13 +342,9 @@ export default function AdminHelpersPage() {
             <FileCheck2 className="h-5 w-5" />
           </div>
 
-          <p className="mt-5 text-sm text-muted-foreground">
-            Rejected
-          </p>
+          <p className="mt-5 text-sm text-muted-foreground">Rejected</p>
 
-          <p className="mt-1 text-3xl font-bold">
-            {rejectedHelpers}
-          </p>
+          <p className="mt-1 text-3xl font-bold">{rejectedHelpers}</p>
 
           <p className="mt-1 text-xs text-muted-foreground">
             Profiles not approved
@@ -416,9 +391,7 @@ export default function AdminHelpersPage() {
 
           <Input
             value={search}
-            onChange={(event) =>
-              setSearch(event.target.value)
-            }
+            onChange={(event) => setSearch(event.target.value)}
             placeholder="Search helpers, services, or locations..."
             className="h-11 pl-10"
           />
@@ -450,9 +423,7 @@ export default function AdminHelpersPage() {
       <section className="overflow-hidden rounded-2xl border bg-card">
         <div className="flex items-center justify-between border-b px-5 py-4">
           <div>
-            <h2 className="font-semibold">
-              Helper directory
-            </h2>
+            <h2 className="font-semibold">Helper directory</h2>
 
             <p className="mt-1 text-xs text-muted-foreground">
               {filteredHelpers.length} helpers shown
@@ -460,241 +431,255 @@ export default function AdminHelpersPage() {
           </div>
         </div>
 
+        {/* Loading state */}
+        {loading && (
+          <div className="px-5 py-16 text-center text-sm text-muted-foreground">
+            Loading helper applications...
+          </div>
+        )}
+
+        {/* Error state */}
+        {error && !loading && (
+          <div className="px-5 py-16 text-center">
+            <p className="text-sm text-red-600">{error}</p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Please refresh the page and try again.
+            </p>
+          </div>
+        )}
+
         {/* Desktop */}
-        <div className="hidden overflow-x-auto md:block">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b bg-muted/30 text-left">
-                <th className="px-5 py-3 font-medium text-muted-foreground">
-                  Helper
-                </th>
+        {showList && (
+          <div className="hidden overflow-x-auto md:block">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b bg-muted/30 text-left">
+                  <th className="px-5 py-3 font-medium text-muted-foreground">
+                    Helper
+                  </th>
+                  <th className="px-5 py-3 font-medium text-muted-foreground">
+                    Service
+                  </th>
+                  <th className="px-5 py-3 font-medium text-muted-foreground">
+                    Experience
+                  </th>
+                  <th className="px-5 py-3 font-medium text-muted-foreground">
+                    Rating
+                  </th>
+                  <th className="px-5 py-3 font-medium text-muted-foreground">
+                    Verification
+                  </th>
+                  <th className="px-5 py-3 font-medium text-muted-foreground">
+                    Status
+                  </th>
+                  <th className="w-12 px-3 py-3" />
+                </tr>
+              </thead>
 
-                <th className="px-5 py-3 font-medium text-muted-foreground">
-                  Service
-                </th>
+              <tbody>
+                {filteredHelpers.map((helper) => (
+                  <tr
+                    key={helper.id}
+                    className="border-b last:border-b-0 hover:bg-muted/20"
+                  >
+                    <td className="px-5 py-4">
+                      <div className="flex items-center gap-3">
+                        <HelperAvatar name={helper.name} />
 
-                <th className="px-5 py-3 font-medium text-muted-foreground">
-                  Experience
-                </th>
+                        <div>
+                          <p className="font-medium">{helper.name}</p>
 
-                <th className="px-5 py-3 font-medium text-muted-foreground">
-                  Rating
-                </th>
-
-                <th className="px-5 py-3 font-medium text-muted-foreground">
-                  Verification
-                </th>
-
-                <th className="px-5 py-3 font-medium text-muted-foreground">
-                  Status
-                </th>
-
-                <th className="w-12 px-3 py-3" />
-              </tr>
-            </thead>
-
-            <tbody>
-              {filteredHelpers.map((helper) => (
-                <tr
-                  key={helper.id}
-                  className="border-b last:border-b-0 hover:bg-muted/20"
-                >
-                  <td className="px-5 py-4">
-                    <div className="flex items-center gap-3">
-                      <HelperAvatar name={helper.name} />
-
-                      <div>
-                        <p className="font-medium">
-                          {helper.name}
-                        </p>
-
-                        <div className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">
-                          <MapPin className="h-3 w-3" />
-                          {helper.location}
+                          <div className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">
+                            <MapPin className="h-3 w-3" />
+                            {helper.location}
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  </td>
+                    </td>
 
-                  <td className="px-5 py-4 text-muted-foreground">
-                    {helper.service}
-                  </td>
+                    <td className="px-5 py-4 text-muted-foreground">
+                      {helper.service}
+                    </td>
 
-                  <td className="px-5 py-4 text-muted-foreground">
-                    {helper.experience}
-                  </td>
+                    <td className="px-5 py-4 text-muted-foreground">
+                      {helper.experience}
+                    </td>
 
-                  <td className="px-5 py-4">
-                    <span className="font-medium">
-                      {helper.rating}
-                    </span>
+                    <td className="px-5 py-4">
+                      {helper.rating !== null && (
+                        <span className="font-medium">
+                          {helper.rating}
+                        </span>
+                      )}
 
-                    <span className="ml-1 text-xs text-muted-foreground">
-                      ({helper.reviews})
-                    </span>
-                  </td>
+                      {helper.reviews !== null && (
+                        <span className="ml-1 text-xs text-muted-foreground">
+                          ({helper.reviews})
+                        </span>
+                      )}
+                    </td>
 
-                  <td className="px-5 py-4">
-                    <VerificationBadge
-                      status={helper.verification}
-                    />
-                  </td>
+                    <td className="px-5 py-4">
+                      <VerificationBadge status={helper.verification} />
+                    </td>
 
-                  <td className="px-5 py-4">
-                    <StatusBadge status={helper.status} />
-                  </td>
+                    <td className="px-5 py-4">
+                      {helper.status && (
+                        <StatusBadge status={helper.status} />
+                      )}
+                    </td>
 
-                  <td className="px-3 py-4">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger >
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8"
-                        >
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem >
-                          <Link
-                            href={`/admin/dashboard/helpers/${helper.id}`}
+                    <td className="px-3 py-4">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8"
                           >
-                            Review profile
-                          </Link>
-                        </DropdownMenuItem>
+                            <MoreHorizontal className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
 
-                        <DropdownMenuItem>
-                          View service history
-                        </DropdownMenuItem>
-
-                        <DropdownMenuSeparator />
-
-                        {helper.status === "Suspended" ? (
+                        <DropdownMenuContent align="end">
                           <DropdownMenuItem>
-                            Restore helper
+                            <Link
+                              href={`/admin/dashboard/helpers/${helper.id}`}
+                            >
+                              Review profile
+                            </Link>
                           </DropdownMenuItem>
-                        ) : (
+
                           <DropdownMenuItem>
-                            Suspend helper
+                            View service history
                           </DropdownMenuItem>
-                        )}
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+
+                          <DropdownMenuSeparator />
+
+                          {helper.status === "Suspended" ? (
+                            <DropdownMenuItem>
+                              Restore helper
+                            </DropdownMenuItem>
+                          ) : (
+                            <DropdownMenuItem>
+                              Suspend helper
+                            </DropdownMenuItem>
+                          )}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
 
         {/* Mobile */}
-        <div className="divide-y md:hidden">
-          {filteredHelpers.map((helper) => (
-            <div
-              key={helper.id}
-              className="p-4"
-            >
-              <div className="flex gap-3">
-                <HelperAvatar name={helper.name} />
+        {showList && (
+          <div className="divide-y md:hidden">
+            {filteredHelpers.map((helper) => (
+              <div key={helper.id} className="p-4">
+                <div className="flex gap-3">
+                  <HelperAvatar name={helper.name} />
 
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <p className="font-medium">
-                        {helper.name}
-                      </p>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <p className="font-medium">{helper.name}</p>
 
-                      <p className="mt-1 text-xs text-muted-foreground">
-                        {helper.service}
-                      </p>
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          {helper.service}
+                        </p>
+                      </div>
+
+                      <DropdownMenu>
+                        <DropdownMenuTrigger>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8"
+                          >
+                            <MoreHorizontal className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem>
+                            <Link
+                              href={`/admin/dashboard/helpers/${helper.id}`}
+                            >
+                              Review profile
+                            </Link>
+                          </DropdownMenuItem>
+
+                          <DropdownMenuItem>
+                            View service history
+                          </DropdownMenuItem>
+
+                          <DropdownMenuSeparator />
+
+                          <DropdownMenuItem>
+                            {helper.status === "Suspended"
+                              ? "Restore helper"
+                              : "Suspend helper"}
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </div>
 
-                    <DropdownMenu>
-                      <DropdownMenuTrigger >
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8"
-                        >
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      <VerificationBadge status={helper.verification} />
 
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem >
-                          <Link
-                            href={`/admin/dashboard/helpers/${helper.id}`}
-                          >
-                            Review profile
-                          </Link>
-                        </DropdownMenuItem>
+                      {helper.status && (
+                        <StatusBadge status={helper.status} />
+                      )}
+                    </div>
 
-                        <DropdownMenuItem>
-                          View service history
-                        </DropdownMenuItem>
+                    <div className="mt-3 grid grid-cols-2 gap-2 text-xs text-muted-foreground">
+                      <span>{helper.experience}</span>
 
-                        <DropdownMenuSeparator />
+                      {helper.rating !== null && (
+                        <span>
+                          ★ {helper.rating}
+                          {helper.reviews !== null &&
+                            ` (${helper.reviews})`}
+                        </span>
+                      )}
 
-                        <DropdownMenuItem>
-                          {helper.status === "Suspended"
-                            ? "Restore helper"
-                            : "Suspend helper"}
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </div>
+                      <span className="col-span-2 flex items-center gap-1">
+                        <MapPin className="h-3 w-3" />
+                        {helper.location}
+                      </span>
+                    </div>
 
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    <VerificationBadge
-                      status={helper.verification}
-                    />
-
-                    <StatusBadge status={helper.status} />
-                  </div>
-
-                  <div className="mt-3 grid grid-cols-2 gap-2 text-xs text-muted-foreground">
-                    <span>{helper.experience}</span>
-
-                    <span>
-                      ★ {helper.rating} ({helper.reviews})
-                    </span>
-
-                    <span className="col-span-2 flex items-center gap-1">
-                      <MapPin className="h-3 w-3" />
-                      {helper.location}
-                    </span>
-                  </div>
-
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="mt-4 w-full"
-                  >
-                    <Link
-                      href={`/admin/dashboard/helpers/${helper.id}`}
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="mt-4 w-full"
                     >
-                      Review profile
-                      <ArrowRight className="ml-2 h-4 w-4" />
-                    </Link>
-                  </Button>
+                      <Link
+                        href={`/admin/dashboard/helpers/${helper.id}`}
+                      >
+                        Review profile
+                        <ArrowRight className="ml-2 h-4 w-4" />
+                      </Link>
+                    </Button>
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
 
         {/* Empty */}
-        {filteredHelpers.length === 0 && (
+        {!loading && !error && filteredHelpers.length === 0 && (
           <div className="flex flex-col items-center justify-center px-6 py-16 text-center">
             <div className="flex h-12 w-12 items-center justify-center rounded-full bg-muted">
               <Search className="h-5 w-5 text-muted-foreground" />
             </div>
 
-            <h3 className="mt-4 font-semibold">
-              No helpers found
-            </h3>
+            <h3 className="mt-4 font-semibold">No helpers found</h3>
 
             <p className="mt-1 text-sm text-muted-foreground">
               Try changing your search or verification filter.
@@ -720,9 +705,7 @@ export default function AdminHelpersPage() {
           <ShieldCheck className="mt-0.5 h-5 w-5 shrink-0" />
 
           <div>
-            <h3 className="font-semibold">
-              Verification review
-            </h3>
+            <h3 className="font-semibold">Verification review</h3>
 
             <p className="mt-1 text-sm leading-6 text-muted-foreground">
               Approval should only be granted after the required

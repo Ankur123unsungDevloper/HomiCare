@@ -1,36 +1,40 @@
-"use client"
+"use client";
 
-import * as React from "react"
-import Link from "next/link"
-import { usePathname } from "next/navigation"
+import * as React from "react";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { UserButton, useUser } from "@clerk/nextjs";
 import {
   AlertTriangle,
   BarChart3,
+  Bell,
   CalendarDays,
   ChevronRight,
   Home,
+  LifeBuoy,
   Menu,
+  Search,
   Settings,
   ShieldCheck,
   UserRound,
   Users,
   X,
-  LifeBuoy,
-} from "lucide-react"
+} from "lucide-react";
 
-import { Button } from "@/components/ui/button"
-import { Separator } from "@/components/ui/separator"
+import { Button } from "@/components/ui/button";
+import { Separator } from "@/components/ui/separator";
+import SignOut from "@/lib/auth/sign-out-button";
 
 type NavItem = {
-  label: string
-  href: string
-  icon: React.ElementType
-}
+  label: string;
+  href: string;
+  icon: React.ElementType;
+};
 
 type NavGroup = {
-  label: string
-  items: NavItem[]
-}
+  label: string;
+  items: NavItem[];
+};
 
 const navGroups: NavGroup[] = [
   {
@@ -88,14 +92,26 @@ const navGroups: NavGroup[] = [
       },
     ],
   },
-]
+];
+
+const allAdminNavigation = navGroups.flatMap((group) => group.items);
+
+function isAdminItemActive(pathname: string, href: string) {
+  return href === "/admin/dashboard"
+    ? pathname === href
+    : pathname.startsWith(href);
+}
+
+/* ---------------------------------------------
+   Sidebar Content
+--------------------------------------------- */
 
 function SidebarContent({
   onNavigate,
 }: {
-  onNavigate?: () => void
+  onNavigate?: () => void;
 }) {
-  const pathname = usePathname()
+  const pathname = usePathname();
 
   return (
     <div className="flex h-full flex-col">
@@ -134,12 +150,12 @@ function SidebarContent({
 
             <div className="space-y-1">
               {group.items.map((item) => {
-                const Icon = item.icon
+                const Icon = item.icon;
 
-                const isActive =
-                  pathname === item.href ||
-                  (item.href !== "/admin/dashboard" &&
-                    pathname.startsWith(item.href))
+                const isActive = isAdminItemActive(
+                  pathname,
+                  item.href,
+                );
 
                 return (
                   <Link
@@ -162,14 +178,14 @@ function SidebarContent({
                       <ChevronRight className="h-3.5 w-3.5 opacity-60" />
                     )}
                   </Link>
-                )
+                );
               })}
             </div>
           </div>
         ))}
       </nav>
 
-      {/* Admin status */}
+      {/* System Status */}
       <div className="p-4">
         <div className="rounded-xl border bg-muted/30 p-4">
           <div className="flex items-center gap-2">
@@ -188,10 +204,10 @@ function SidebarContent({
 
       <Separator />
 
-      {/* Account */}
+      {/* Administrator Account */}
       <div className="p-4">
         <div className="flex items-center gap-3 rounded-xl bg-muted/30 p-3">
-          <div className="flex h-9 w-9 items-center justify-center rounded-full bg-foreground text-sm font-semibold text-background">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-foreground text-sm font-semibold text-background">
             AD
           </div>
 
@@ -211,29 +227,141 @@ function SidebarContent({
             className="h-8 w-8"
             aria-label="Account settings"
           >
-            <Settings className="h-4 w-4" />
+            <Link href="/admin/dashboard/settings">
+              <Settings className="h-4 w-4" />
+            </Link>
           </Button>
         </div>
       </div>
+
+      {/* Sign Out */}
+      <div className="px-4 pb-4">
+        <div className="rounded-xl border border-destructive/20 p-3">
+          <div className="mt-3 [&>button]:flex [&>button]:h-9 [&>button]:w-full [&>button]:items-center [&>button]:justify-center [&>button]:rounded-md [&>button]:bg-destructive [&>button]:text-sm [&>button]:font-medium [&>button]:text-destructive-foreground [&>button]:transition-colors [&>button]:hover:bg-destructive/90">
+            <SignOut />
+          </div>
+        </div>
+      </div>
     </div>
-  )
+  );
 }
+
+/* ---------------------------------------------
+   Desktop Top Bar
+--------------------------------------------- */
+
+function DesktopTopBar({
+  pathname,
+}: {
+  pathname: string;
+}) {
+  const { isLoaded, user } = useUser();
+
+  const current =
+    [...allAdminNavigation]
+      .sort((a, b) => b.href.length - a.href.length)
+      .find((item) =>
+        isAdminItemActive(pathname, item.href),
+      ) ?? allAdminNavigation[0];
+
+  const displayName =
+    user?.fullName ??
+    user?.primaryEmailAddress?.emailAddress ??
+    "Administrator";
+
+  return (
+    <header className="sticky top-0 z-30 hidden h-16 border-b bg-background/95 backdrop-blur lg:block">
+      <div className="mx-auto flex h-full w-full max-w-350 items-center gap-4 px-8">
+        {/* Current Page */}
+        <div className="min-w-0">
+          <p className="text-[11px] font-medium uppercase tracking-[0.16em] text-muted-foreground">
+            HomiCare Admin Portal
+          </p>
+
+          <h1 className="truncate text-base font-semibold tracking-tight">
+            {current.label}
+          </h1>
+        </div>
+
+        {/* Top Bar Actions */}
+        <div className="ml-auto flex items-center gap-2">
+          {/* Search Placeholder */}
+          <button
+            type="button"
+            onClick={() => {
+              // Search functionality can be implemented later.
+            }}
+            className="hidden h-10 w-64 items-center gap-2 rounded-xl border bg-muted/40 px-3 text-sm text-muted-foreground transition-colors hover:bg-muted xl:flex"
+            aria-label="Search the admin portal"
+          >
+            <Search className="size-4" />
+
+            <span className="flex-1 text-left">
+              Search users, helpers, bookings...
+            </span>
+
+            <kbd className="rounded border bg-background px-1.5 py-0.5 text-[10px] font-medium">
+              Ctrl K
+            </kbd>
+          </button>
+
+          {/* Notifications Placeholder */}
+          <Button
+            variant="ghost"
+            size="icon"
+            className="relative"
+            aria-label="Notifications"
+          >
+            <Bell className="size-5" />
+
+            <span className="absolute right-2.5 top-2.5 size-2 rounded-full bg-foreground ring-2 ring-background" />
+          </Button>
+
+          <Separator
+            orientation="vertical"
+            className="mx-1 h-6"
+          />
+
+          {/* Profile */}
+          <div className="flex items-center gap-3">
+            <div className="hidden min-w-0 2xl:block">
+              <p className="max-w-44 truncate text-sm font-semibold leading-none">
+                {isLoaded ? displayName : "Loading account..."}
+              </p>
+
+              <p className="mt-1 text-xs text-muted-foreground">
+                Administrator
+              </p>
+            </div>
+
+            <UserButton />
+          </div>
+        </div>
+      </div>
+    </header>
+  );
+}
+
+/* ---------------------------------------------
+    Admin Dashboard Layout
+--------------------------------------------- */
 
 export default function AdminDashboardLayout({
   children,
 }: {
-  children: React.ReactNode
+  children: React.ReactNode;
 }) {
-  const [mobileOpen, setMobileOpen] = React.useState(false)
+  const [mobileOpen, setMobileOpen] = React.useState(false);
+  const pathname = usePathname();
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Desktop sidebar */}
+      {/* Desktop Sidebar */}
       <aside className="fixed inset-y-0 left-0 z-40 hidden w-64 border-r bg-card lg:block">
         <SidebarContent />
       </aside>
 
-      {/* Mobile header */}
+      {/* Mobile Header */}
       <header className="sticky top-0 z-30 flex h-16 items-center border-b bg-background/95 px-4 backdrop-blur lg:hidden">
         <Button
           variant="ghost"
@@ -262,9 +390,14 @@ export default function AdminDashboardLayout({
             </p>
           </div>
         </Link>
+
+        <div className="ml-auto">
+          <UserButton />
+        </div>
+        
       </header>
 
-      {/* Mobile sidebar */}
+      {/* Mobile Sidebar */}
       {mobileOpen && (
         <div className="fixed inset-0 z-50 lg:hidden">
           <button
@@ -293,12 +426,15 @@ export default function AdminDashboardLayout({
         </div>
       )}
 
-      {/* Main content */}
-      <main className="min-h-screen lg:pl-64">
-        <div className="mx-auto w-full max-w-350 px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
+      {/* Main Content */}
+      <div className="min-h-screen lg:pl-64">
+        <DesktopTopBar pathname={pathname} />
+
+        <main className="mx-auto w-full max-w-350 px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
           {children}
-        </div>
-      </main>
+        </main>
+      </div>
+      
     </div>
-  )
+  );
 }

@@ -1,6 +1,7 @@
 "use client"
 
 import * as React from "react"
+import { useAuth } from "@clerk/nextjs"
 import {
   AlertTriangle,
   CheckCircle2,
@@ -43,92 +44,43 @@ type Complaint = {
   description: string
 }
 
-const complaints: Complaint[] = [
-  {
-    id: "CMP-0087",
-    subject: "Helper did not arrive for scheduled service",
-    household: "Rahul Mehta",
-    helper: "Priya Sharma",
-    category: "Service Issue",
-    submitted: "08 Oct 2026",
-    priority: "High",
-    status: "Open",
-    description:
-      "The helper did not arrive for the scheduled morning service and the household was not notified in advance.",
-  },
-  {
-    id: "CMP-0086",
-    subject: "Service duration was shorter than agreed",
-    household: "Neha Kapoor",
-    helper: "Sunita Patil",
-    category: "Service Issue",
-    submitted: "08 Oct 2026",
-    priority: "Medium",
-    status: "Under Review",
-    description:
-      "Household reported that the service ended earlier than the agreed schedule.",
-  },
-  {
-    id: "CMP-0085",
-    subject: "Concern regarding helper conduct",
-    household: "Amit Shah",
-    helper: "Meena Joshi",
-    category: "Conduct",
-    submitted: "07 Oct 2026",
-    priority: "High",
-    status: "Open",
-    description:
-      "Household has raised a concern regarding communication and conduct during the service.",
-  },
-  {
-    id: "CMP-0084",
-    subject: "Booking cancellation dispute",
-    household: "Priya Nair",
-    helper: "Kavita Rao",
-    category: "Cancellation",
-    submitted: "07 Oct 2026",
-    priority: "Medium",
-    status: "Under Review",
-    description:
-      "Both parties have provided different reasons for the cancellation of the booking.",
-  },
-  {
-    id: "CMP-0083",
-    subject: "Repeated late arrival",
-    household: "Sanjay Kulkarni",
-    helper: "Anita Verma",
-    category: "Attendance",
-    submitted: "06 Oct 2026",
-    priority: "Medium",
-    status: "Resolved",
-    description:
-      "Household reported repeated delays. Admin reviewed the service history and contacted both parties.",
-  },
-  {
-    id: "CMP-0082",
-    subject: "Incorrect service expectations",
-    household: "Riya Desai",
-    helper: "Rita Deshmukh",
-    category: "Service Issue",
-    submitted: "05 Oct 2026",
-    priority: "Low",
-    status: "Resolved",
-    description:
-      "The household and helper had different expectations regarding the requested service.",
-  },
-  {
-    id: "CMP-0081",
-    subject: "Communication issue",
-    household: "Karan Patel",
-    helper: "Meena Kapoor",
-    category: "Communication",
-    submitted: "04 Oct 2026",
-    priority: "Low",
-    status: "Closed",
-    description:
-      "Communication issue was reviewed and resolved between both parties.",
-  },
-]
+type ComplaintStats = {
+  total: number
+  open: number
+  review: number
+  resolved: number
+  highPriority: number
+}
+
+type ApiPerson = {
+  firstName?: string | null
+  lastName?: string | null
+  email?: string | null
+} | null
+
+type ApiComplaint = {
+  id: string
+  complaintNumber?: string | number | null
+  subject: string
+  description: string
+  category: string
+  priority: "LOW" | "MEDIUM" | "HIGH"
+  status: "OPEN" | "UNDER_REVIEW" | "RESOLVED" | "CLOSED"
+  createdAt: string
+  household?: ApiPerson
+  helper?: ApiPerson
+}
+
+const API_URL =
+  process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:5000"
+
+const initialStats: ComplaintStats = {
+  total: 0,
+  open: 0,
+  review: 0,
+  resolved: 0,
+  highPriority: 0,
+}
 
 const statusFilters = [
   "All",
@@ -138,33 +90,191 @@ const statusFilters = [
   "Closed",
 ] as const
 
+function personName(person: ApiPerson | undefined, fallback: string) {
+  if (!person) return fallback
+
+  return (
+    [person.firstName, person.lastName].filter(Boolean).join(" ") ||
+    person.email ||
+    fallback
+  )
+}
+
+function formatComplaintId(item: ApiComplaint) {
+  // The API already returns a formatted number such as "CMP-0012".
+  // If a raw number is received instead, format it here.
+  if (typeof item.complaintNumber === "string") {
+    return item.complaintNumber
+  }
+
+  if (typeof item.complaintNumber === "number") {
+    return `CMP-${String(item.complaintNumber).padStart(4, "0")}`
+  }
+
+  return item.id
+}
+
 export default function AdminComplaintsPage() {
+  const { getToken } = useAuth()
+
   const [search, setSearch] = React.useState("")
   const [statusFilter, setStatusFilter] = React.useState("All")
 
-  const filteredComplaints = complaints.filter((complaint) => {
-    const query = search.toLowerCase()
+  const [complaints, setComplaints] = React.useState<Complaint[]>([])
+  const [stats, setStats] =
+    React.useState<ComplaintStats>(initialStats)
 
-    const matchesSearch =
-      complaint.id.toLowerCase().includes(query) ||
-      complaint.subject.toLowerCase().includes(query) ||
-      complaint.household.toLowerCase().includes(query) ||
-      complaint.helper.toLowerCase().includes(query) ||
-      complaint.category.toLowerCase().includes(query)
+  const [page, setPage] = React.useState(1)
+  const [totalPages, setTotalPages] = React.useState(1)
+  const [totalComplaints, setTotalComplaints] = React.useState(0)
 
-    const matchesStatus =
-      statusFilter === "All" || complaint.status === statusFilter
+  const [loading, setLoading] = React.useState(true)
+  const [error, setError] = React.useState<string | null>(null)
 
-    return matchesSearch && matchesStatus
-  })
 
-  const stats = {
-    total: complaints.length,
-    open: complaints.filter((c) => c.status === "Open").length,
-    review: complaints.filter((c) => c.status === "Under Review").length,
-    resolved: complaints.filter((c) => c.status === "Resolved").length,
-    highPriority: complaints.filter((c) => c.priority === "High").length,
-  }
+  React.useEffect(() => {
+    let cancelled = false
+
+    async function fetchComplaints() {
+      try {
+        setLoading(true)
+        setError(null)
+
+        const token = await getToken()
+
+        if (!token) {
+          throw new Error("Authentication token not available.")
+        }
+
+        const params = new URLSearchParams({
+          page: String(page),
+          limit: "10",
+        })
+
+        if (search.trim()) {
+          params.set("search", search.trim())
+        }
+
+        if (statusFilter !== "All") {
+          params.set(
+            "status",
+            statusFilter.toUpperCase().replaceAll(" ", "_")
+          )
+        }
+
+        const response = await fetch(
+          `${API_URL}/api/admin/complaints?${params.toString()}`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+            cache: "no-store",
+          }
+        )
+
+        const result = await response.json()
+
+        if (!response.ok) {
+          throw new Error(
+            result.message || "Failed to load complaints."
+          )
+        }
+
+        if (cancelled) return
+
+        const data = result.data ?? result
+
+        const complaintList: ApiComplaint[] = data.complaints ?? []
+
+        setComplaints(
+          complaintList.map((item): Complaint => ({
+            id: formatComplaintId(item),
+
+            subject: item.subject,
+
+            household: personName(item.household, "Unknown"),
+
+            helper: personName(item.helper, "Not assigned"),
+
+            category: item.category
+              .replaceAll("_", " ")
+              .toLowerCase()
+              .replace(/\b\w/g, (char: string) => char.toUpperCase()),
+
+            submitted: new Date(item.createdAt).toLocaleDateString(
+              "en-IN",
+              {
+                day: "2-digit",
+                month: "short",
+                year: "numeric",
+              }
+            ),
+
+            priority:
+              item.priority === "HIGH"
+                ? "High"
+                : item.priority === "LOW"
+                  ? "Low"
+                  : "Medium",
+
+            status:
+              item.status === "UNDER_REVIEW"
+                ? "Under Review"
+                : item.status === "RESOLVED"
+                  ? "Resolved"
+                  : item.status === "CLOSED"
+                    ? "Closed"
+                    : "Open",
+
+            description: item.description,
+          }))
+        )
+
+        // The API returns `statistics`; `stats` is accepted as a fallback.
+        const apiStats = data.statistics ?? data.stats
+
+        if (apiStats) {
+          setStats({
+            total: apiStats.total ?? 0,
+            open: apiStats.open ?? 0,
+            review: apiStats.underReview ?? apiStats.review ?? 0,
+            resolved: apiStats.resolved ?? 0,
+            highPriority: apiStats.highPriority ?? 0,
+          })
+        }
+
+        setTotalComplaints(
+          data.pagination?.totalComplaints ??
+            data.pagination?.total ??
+            complaintList.length
+        )
+
+        setTotalPages(Math.max(1, data.pagination?.totalPages ?? 1))
+      } catch (err) {
+        if (!cancelled) {
+          setError(
+            err instanceof Error
+              ? err.message
+              : "Something went wrong."
+          )
+        }
+      } finally {
+        if (!cancelled) {
+          setLoading(false)
+        }
+      }
+    }
+
+    fetchComplaints()
+
+    return () => {
+      cancelled = true
+    }
+  }, [getToken, page, search, statusFilter])
+
+  const filteredComplaints = complaints
+
+  const showList = !loading && !error
 
   return (
     <div className="space-y-6 pb-10">
@@ -288,142 +398,160 @@ export default function AdminComplaintsPage() {
           ))}
         </div>
 
+        {/* Loading */}
+        {loading && (
+          <div className="border-t p-8 text-center text-sm text-muted-foreground">
+            Loading complaints...
+          </div>
+        )}
+
+        {/* Error */}
+        {error && (
+          <div className="border-t p-8 text-center text-sm text-destructive">
+            {error}
+          </div>
+        )}
+
         {/* Desktop */}
-        <div className="mt-3 hidden overflow-x-auto lg:block">
-          <table className="w-full text-sm">
-            <thead className="border-t bg-muted/30">
-              <tr>
-                <th className="px-5 py-3 text-left font-medium text-muted-foreground">
-                  Complaint
-                </th>
+        {showList && (
+          <div className="mt-3 hidden overflow-x-auto lg:block">
+            <table className="w-full text-sm">
+              <thead className="border-t bg-muted/30">
+                <tr>
+                  <th className="px-5 py-3 text-left font-medium text-muted-foreground">
+                    Complaint
+                  </th>
 
-                <th className="px-5 py-3 text-left font-medium text-muted-foreground">
-                  Household
-                </th>
+                  <th className="px-5 py-3 text-left font-medium text-muted-foreground">
+                    Household
+                  </th>
 
-                <th className="px-5 py-3 text-left font-medium text-muted-foreground">
-                  Helper
-                </th>
+                  <th className="px-5 py-3 text-left font-medium text-muted-foreground">
+                    Helper
+                  </th>
 
-                <th className="px-5 py-3 text-left font-medium text-muted-foreground">
-                  Category
-                </th>
+                  <th className="px-5 py-3 text-left font-medium text-muted-foreground">
+                    Category
+                  </th>
 
-                <th className="px-5 py-3 text-left font-medium text-muted-foreground">
-                  Priority
-                </th>
+                  <th className="px-5 py-3 text-left font-medium text-muted-foreground">
+                    Priority
+                  </th>
 
-                <th className="px-5 py-3 text-left font-medium text-muted-foreground">
-                  Status
-                </th>
+                  <th className="px-5 py-3 text-left font-medium text-muted-foreground">
+                    Status
+                  </th>
 
-                <th className="px-5 py-3 text-right font-medium text-muted-foreground">
-                  Action
-                </th>
-              </tr>
-            </thead>
+                  <th className="px-5 py-3 text-right font-medium text-muted-foreground">
+                    Action
+                  </th>
+                </tr>
+              </thead>
 
-            <tbody>
-              {filteredComplaints.map((complaint) => (
-                <tr
-                  key={complaint.id}
-                  className="border-t transition-colors hover:bg-muted/20"
-                >
-                  <td className="max-w-70 px-5 py-4">
-                    <p className="font-medium">{complaint.subject}</p>
+              <tbody>
+                {filteredComplaints.map((complaint) => (
+                  <tr
+                    key={complaint.id}
+                    className="border-t transition-colors hover:bg-muted/20"
+                  >
+                    <td className="max-w-70 px-5 py-4">
+                      <p className="font-medium">{complaint.subject}</p>
+
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        {complaint.id} · {complaint.submitted}
+                      </p>
+                    </td>
+
+                    <td className="px-5 py-4 font-medium">
+                      {complaint.household}
+                    </td>
+
+                    <td className="px-5 py-4 font-medium">
+                      {complaint.helper}
+                    </td>
+
+                    <td className="px-5 py-4">
+                      {complaint.category}
+                    </td>
+
+                    <td className="px-5 py-4">
+                      <PriorityBadge priority={complaint.priority} />
+                    </td>
+
+                    <td className="px-5 py-4">
+                      <StatusBadge status={complaint.status} />
+                    </td>
+
+                    <td className="px-5 py-4 text-right">
+                      <ComplaintActions complaint={complaint} />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        {/* Mobile */}
+        {showList && (
+          <div className="divide-y lg:hidden">
+            {filteredComplaints.map((complaint) => (
+              <div key={complaint.id} className="space-y-4 p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="font-semibold">{complaint.subject}</p>
 
                     <p className="mt-1 text-xs text-muted-foreground">
                       {complaint.id} · {complaint.submitted}
                     </p>
-                  </td>
+                  </div>
 
-                  <td className="px-5 py-4 font-medium">
-                    {complaint.household}
-                  </td>
-
-                  <td className="px-5 py-4 font-medium">
-                    {complaint.helper}
-                  </td>
-
-                  <td className="px-5 py-4">
-                    {complaint.category}
-                  </td>
-
-                  <td className="px-5 py-4">
-                    <PriorityBadge priority={complaint.priority} />
-                  </td>
-
-                  <td className="px-5 py-4">
-                    <StatusBadge status={complaint.status} />
-                  </td>
-
-                  <td className="px-5 py-4 text-right">
-                    <ComplaintActions complaint={complaint} />
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-
-        {/* Mobile */}
-        <div className="divide-y lg:hidden">
-          {filteredComplaints.map((complaint) => (
-            <div key={complaint.id} className="space-y-4 p-4">
-              <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <p className="font-semibold">{complaint.subject}</p>
-
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    {complaint.id} · {complaint.submitted}
-                  </p>
+                  <ComplaintActions complaint={complaint} />
                 </div>
 
-                <ComplaintActions complaint={complaint} />
+                <div className="flex flex-wrap gap-2">
+                  <PriorityBadge priority={complaint.priority} />
+                  <StatusBadge status={complaint.status} />
+                </div>
+
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <InfoItem
+                    label="Household"
+                    value={complaint.household}
+                  />
+
+                  <InfoItem
+                    label="Helper"
+                    value={complaint.helper}
+                  />
+
+                  <InfoItem
+                    label="Category"
+                    value={complaint.category}
+                  />
+
+                  <InfoItem
+                    label="Submitted"
+                    value={complaint.submitted}
+                  />
+                </div>
+
+                <div className="rounded-lg bg-muted/40 p-3">
+                  <p className="text-xs font-medium text-muted-foreground">
+                    Description
+                  </p>
+
+                  <p className="mt-1 text-sm leading-6">
+                    {complaint.description}
+                  </p>
+                </div>
               </div>
-
-              <div className="flex flex-wrap gap-2">
-                <PriorityBadge priority={complaint.priority} />
-                <StatusBadge status={complaint.status} />
-              </div>
-
-              <div className="grid grid-cols-2 gap-4 text-sm">
-                <InfoItem
-                  label="Household"
-                  value={complaint.household}
-                />
-
-                <InfoItem
-                  label="Helper"
-                  value={complaint.helper}
-                />
-
-                <InfoItem
-                  label="Category"
-                  value={complaint.category}
-                />
-
-                <InfoItem
-                  label="Submitted"
-                  value={complaint.submitted}
-                />
-              </div>
-
-              <div className="rounded-lg bg-muted/40 p-3">
-                <p className="text-xs font-medium text-muted-foreground">
-                  Description
-                </p>
-
-                <p className="mt-1 text-sm leading-6">
-                  {complaint.description}
-                </p>
-              </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
 
         {/* Empty */}
-        {filteredComplaints.length === 0 && (
+        {showList && filteredComplaints.length === 0 && (
           <div className="border-t p-12 text-center">
             <MessageSquareText className="mx-auto size-8 text-muted-foreground" />
 
@@ -437,8 +565,34 @@ export default function AdminComplaintsPage() {
           </div>
         )}
 
-        <div className="border-t px-5 py-4 text-sm text-muted-foreground">
-          Showing {filteredComplaints.length} of {complaints.length} complaints
+        <div className="flex flex-col gap-3 border-t px-5 py-4 text-sm text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
+          <span>
+            Showing {complaints.length} of {totalComplaints} complaints
+          </span>
+
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={page <= 1 || loading}
+              onClick={() => setPage((current) => current - 1)}
+            >
+              Previous
+            </Button>
+
+            <span>
+              Page {page} of {totalPages}
+            </span>
+
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={page >= totalPages || loading}
+              onClick={() => setPage((current) => current + 1)}
+            >
+              Next
+            </Button>
+          </div>
         </div>
       </section>
 

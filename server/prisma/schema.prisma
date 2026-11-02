@@ -7,11 +7,106 @@ datasource db {
   provider = "postgresql"
 }
 
+/**
+ * ---------------------------------------------
+ * Enums
+ * ---------------------------------------------
+ */
+
 enum UserRole {
   USER
   HELPER
   ADMIN
 }
+
+enum BookingAssignmentType {
+  CUSTOMER_SELECTED
+  PLATFORM_ASSIGNED
+}
+
+enum BookingStatus {
+  PENDING
+  CONFIRMED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum HelperApplicationStatus {
+  DRAFT
+  PENDING
+  UNDER_REVIEW
+  VERIFICATION_IN_PROGRESS
+  ACTION_REQUIRED
+  VERIFIED
+  APPROVED
+  REJECTED
+}
+
+enum VerificationType {
+  IDENTITY
+  PHONE
+  ADDRESS
+  BACKGROUND
+  EXPERIENCE
+  REFERENCES
+  QUALIFICATION
+}
+
+enum VerificationStatus {
+  PENDING
+  IN_PROGRESS
+  PASSED
+  FAILED
+  ACTION_REQUIRED
+}
+
+enum VerificationDocumentStatus {
+  PENDING_REVIEW
+  ACCEPTED
+  REJECTED
+}
+
+enum PaymentStatus {
+  CREATED
+  PAID
+  FAILED
+}
+
+enum ComplaintCategory {
+  SERVICE_ISSUE
+  CONDUCT
+  CANCELLATION
+  ATTENDANCE
+  COMMUNICATION
+  PAYMENT
+  OTHER
+}
+
+enum ComplaintPriority {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+enum ComplaintStatus {
+  OPEN
+  UNDER_REVIEW
+  RESOLVED
+  CLOSED
+}
+
+enum ComplaintActorType {
+  HOUSEHOLD
+  HELPER
+  ADMIN
+}
+
+/**
+ * ---------------------------------------------
+ * Users
+ * ---------------------------------------------
+ */
 
 model User {
   id        String   @id @default(cuid())
@@ -23,4 +118,278 @@ model User {
   role      UserRole @default(USER)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  helperApplications    HelperApplication[]
+  reviewedApplications  HelperApplication[]    @relation("ApplicationReviewer")
+  reviewedVerifications HelperVerification[]   @relation("VerificationReviewer")
+  reviewedDocuments     VerificationDocument[] @relation("DocumentReviewer")
+  uploadedDocuments     VerificationDocument[] @relation("DocumentUploader")
+  auditLogs             AdminAuditLog[]        @relation("AuditActor")
+
+  householdBookings Booking[] @relation("HouseholdBookings")
+  assignedBookings  Booking[] @relation("AssignedBookings")
+
+  filedComplaints    Complaint[] @relation("ComplaintHousehold")
+  helperComplaints   Complaint[] @relation("ComplaintHelper")
+  assignedComplaints Complaint[] @relation("ComplaintReviewer")
+
+  complaintUpdates ComplaintUpdate[]
+}
+
+/**
+ * ---------------------------------------------
+ * Bookings
+ * ---------------------------------------------
+ */
+
+model Booking {
+  id String @id @default(cuid())
+
+  // Household who created the booking
+  householdId String
+  household   User   @relation("HouseholdBookings", fields: [householdId], references: [id], onDelete: Cascade)
+
+  // Assigned helper; remains null until assignment
+  helperId String?
+  helper   User?   @relation("AssignedBookings", fields: [helperId], references: [id], onDelete: SetNull)
+
+  // Booking details
+  serviceType    String
+  planType       String
+  assignmentType BookingAssignmentType
+  status         BookingStatus @default(PENDING)
+
+  // Schedule
+  startAt DateTime
+  endAt   DateTime?
+
+  // Service location
+  address String
+  city    String
+  area    String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  complaints Complaint[]
+
+  @@index([householdId])
+  @@index([helperId])
+  @@index([status])
+  @@index([startAt])
+}
+
+/**
+ * ---------------------------------------------
+ * Helper applications
+ * ---------------------------------------------
+ */
+
+model HelperApplication {
+  id                String                  @id @default(cuid())
+  userId            String
+  fullName          String
+  phone             String
+  city              String
+  area              String
+  services          String[]
+  experience        String
+  availability      String
+  experienceDetails String?
+  status            HelperApplicationStatus @default(PENDING)
+  reviewedAt        DateTime?
+  reviewedById      String?
+  rejectionReason   String?
+  createdAt         DateTime                @default(now())
+  updatedAt         DateTime                @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  reviewer User? @relation("ApplicationReviewer", fields: [reviewedById], references: [id], onDelete: SetNull)
+
+  verifications HelperVerification[]
+  payments      Payment[]
+  auditLogs     AdminAuditLog[]
+
+  @@index([userId])
+  @@index([status])
+  @@index([createdAt])
+  @@index([reviewedById])
+}
+
+/**
+ * ---------------------------------------------
+ * Helper registration payments
+ * ---------------------------------------------
+ */
+
+model Payment {
+  id                String        @id @default(cuid())
+  applicationId     String
+  razorpayOrderId   String        @unique
+  razorpayPaymentId String?       @unique
+  amount            Int
+  currency          String        @default("INR")
+  status            PaymentStatus @default(CREATED)
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+
+  application HelperApplication @relation(fields: [applicationId], references: [id], onDelete: Restrict)
+
+  @@index([applicationId, status])
+}
+
+/**
+ * ---------------------------------------------
+ * Verification checks
+ * ---------------------------------------------
+ */
+
+model HelperVerification {
+  id            String             @id @default(cuid())
+  applicationId String
+  reviewerId    String?
+  type          VerificationType
+  status        VerificationStatus @default(PENDING)
+
+  evidenceRequired Boolean @default(false)
+
+  notes      String?
+  reviewedAt DateTime?
+  verifiedAt DateTime?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  application HelperApplication @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+
+  reviewer User? @relation("VerificationReviewer", fields: [reviewerId], references: [id], onDelete: SetNull)
+
+  documents VerificationDocument[]
+
+  @@unique([applicationId, type])
+  @@index([applicationId, status])
+  @@index([reviewerId])
+}
+
+/**
+ * ---------------------------------------------
+ * Uploaded evidence for verification
+ * ---------------------------------------------
+ */
+
+model VerificationDocument {
+  id             String                     @id @default(cuid())
+  verificationId String
+  uploadedById   String
+  reviewedById   String?
+  documentType   String
+  storageKey     String                     @unique
+  mimeType       String
+  sizeBytes      Int
+  status         VerificationDocumentStatus @default(PENDING_REVIEW)
+  reviewNotes    String?
+  reviewedAt     DateTime?
+  createdAt      DateTime                   @default(now())
+  updatedAt      DateTime                   @updatedAt
+
+  verification HelperVerification @relation(fields: [verificationId], references: [id], onDelete: Cascade)
+
+  uploader User @relation("DocumentUploader", fields: [uploadedById], references: [id], onDelete: Restrict)
+
+  reviewer User? @relation("DocumentReviewer", fields: [reviewedById], references: [id], onDelete: SetNull)
+
+  @@index([verificationId, status])
+  @@index([uploadedById])
+}
+
+/**
+ * ---------------------------------------------
+ * Admin audit trail
+ * ---------------------------------------------
+ */
+
+model AdminAuditLog {
+  id            String  @id @default(cuid())
+  actorId       String
+  applicationId String?
+  action        String
+  entityType    String
+  entityId      String
+
+  metadata  Json?
+  createdAt DateTime @default(now())
+
+  actor User @relation("AuditActor", fields: [actorId], references: [id], onDelete: Restrict)
+
+  application HelperApplication? @relation(fields: [applicationId], references: [id], onDelete: SetNull)
+
+  @@index([actorId, createdAt])
+  @@index([applicationId, createdAt])
+  @@index([entityType, entityId])
+}
+
+/**
+ * ---------------------------------------------
+ * Complaints
+ * ---------------------------------------------
+ */
+
+model Complaint {
+  id              String @id @default(cuid())
+  complaintNumber Int    @unique @default(autoincrement())
+
+  // People involved
+  householdId String
+  helperId    String?
+  reviewerId  String?
+
+  household User  @relation("ComplaintHousehold", fields: [householdId], references: [id], onDelete: Restrict)
+  helper    User? @relation("ComplaintHelper", fields: [helperId], references: [id], onDelete: SetNull)
+  reviewer  User? @relation("ComplaintReviewer", fields: [reviewerId], references: [id], onDelete: SetNull)
+
+  // Related booking
+  bookingId String?
+  booking   Booking? @relation(fields: [bookingId], references: [id], onDelete: SetNull)
+
+  // Complaint information
+  subject     String
+  description String
+  category    ComplaintCategory
+  priority    ComplaintPriority @default(MEDIUM)
+  status      ComplaintStatus   @default(OPEN)
+
+  // Resolution information
+  resolution String?
+  resolvedAt DateTime?
+  closedAt   DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  updates ComplaintUpdate[]
+
+  @@index([householdId])
+  @@index([helperId])
+  @@index([reviewerId])
+  @@index([bookingId])
+  @@index([status])
+  @@index([priority])
+  @@index([createdAt])
+}
+
+model ComplaintUpdate {
+  id          String @id @default(cuid())
+  complaintId String
+  actorId     String
+
+  actorType ComplaintActorType
+  message   String
+
+  createdAt DateTime @default(now())
+
+  complaint Complaint @relation(fields: [complaintId], references: [id], onDelete: Cascade)
+  actor     User      @relation(fields: [actorId], references: [id], onDelete: Restrict)
+
+  @@index([complaintId, createdAt])
+  @@index([actorId])
 }
