@@ -1,19 +1,20 @@
 "use client";
 
 import * as React from "react";
+
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+
 import { UserButton, useUser } from "@clerk/nextjs";
+
 import {
   AlertTriangle,
   BarChart3,
-  Bell,
   CalendarDays,
   ChevronRight,
   Home,
   LifeBuoy,
   Menu,
-  Search,
   Settings,
   ShieldCheck,
   UserRound,
@@ -23,7 +24,11 @@ import {
 
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
+
 import SignOut from "@/lib/auth/sign-out-button";
+
+import { Searchbar } from "@/components/searchbar";
+import { Notification } from "@/components/notifications";
 
 type NavItem = {
   label: string;
@@ -97,9 +102,7 @@ const navGroups: NavGroup[] = [
 const allAdminNavigation = navGroups.flatMap((group) => group.items);
 
 function isAdminItemActive(pathname: string, href: string) {
-  return href === "/admin/dashboard"
-    ? pathname === href
-    : pathname.startsWith(href);
+  return pathname === href;
 }
 
 /* ---------------------------------------------
@@ -206,10 +209,8 @@ function SidebarContent({
 
       {/* Administrator Account */}
       <div className="p-4">
-        <div className="flex items-center gap-3 rounded-xl bg-muted/30 p-3">
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-foreground text-sm font-semibold text-background">
-            AD
-          </div>
+        <div className="flex items-center gap-3 rounded-xl bg-muted/30 p-3 hover:cursor-pointer">
+          <UserButton />
 
           <div className="min-w-0 flex-1">
             <p className="truncate text-sm font-semibold">
@@ -273,7 +274,7 @@ function DesktopTopBar({
     <header className="sticky top-0 z-30 hidden h-16 border-b bg-background/95 backdrop-blur lg:block">
       <div className="mx-auto flex h-full w-full max-w-350 items-center gap-4 px-8">
         {/* Current Page */}
-        <div className="min-w-0">
+        <div className="min-w-50%">
           <p className="text-[11px] font-medium uppercase tracking-[0.16em] text-muted-foreground">
             HomiCare Admin Portal
           </p>
@@ -284,38 +285,12 @@ function DesktopTopBar({
         </div>
 
         {/* Top Bar Actions */}
-        <div className="ml-auto flex items-center gap-2">
+        <div className="ml-auto flex items-center justify-end gap-2 w-50%">
           {/* Search Placeholder */}
-          <button
-            type="button"
-            onClick={() => {
-              // Search functionality can be implemented later.
-            }}
-            className="hidden h-10 w-64 items-center gap-2 rounded-xl border bg-muted/40 px-3 text-sm text-muted-foreground transition-colors hover:bg-muted xl:flex"
-            aria-label="Search the admin portal"
-          >
-            <Search className="size-4" />
-
-            <span className="flex-1 text-left">
-              Search users, helpers, bookings...
-            </span>
-
-            <kbd className="rounded border bg-background px-1.5 py-0.5 text-[10px] font-medium">
-              Ctrl K
-            </kbd>
-          </button>
+          <Searchbar placeholder="Search users, helpers, bookings..." />
 
           {/* Notifications Placeholder */}
-          <Button
-            variant="ghost"
-            size="icon"
-            className="relative"
-            aria-label="Notifications"
-          >
-            <Bell className="size-5" />
-
-            <span className="absolute right-2.5 top-2.5 size-2 rounded-full bg-foreground ring-2 ring-background" />
-          </Button>
+          <Notification />
 
           <Separator
             orientation="vertical"
