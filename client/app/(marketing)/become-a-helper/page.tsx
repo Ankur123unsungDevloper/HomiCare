@@ -66,7 +66,7 @@ const documentOptions = [
   },
 ];
 
-const MAX_FILE_SIZE = 5 * 1024 * 1024;
+const MAX_FILE_SIZE = 4 * 1024 * 1024;
 
 export default function BecomeAHelperPage() {
   const { isLoaded, isSignedIn, getToken } = useAuth();
