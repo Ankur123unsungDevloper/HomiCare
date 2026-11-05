@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "tsx watch src/server.ts",
     "typecheck": "tsc --noEmit",
-    "build": "tsc --noEmit false"
+    "build": "prisma generate && tsc --noEmit false",
+    "postinstall": "prisma generate"
   },
   "keywords": [],
   "author": "",
