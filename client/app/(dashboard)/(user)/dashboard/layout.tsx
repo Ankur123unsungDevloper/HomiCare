@@ -413,10 +413,10 @@ function SidebarFooter() {
       </div>
 
       {/* Logout */}
-      <button className="mt-2 flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground">
+      <div className="mt-2 flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground">
         <LogOut className="size-4.25" />
         <SignOut />
-      </button>
+      </div>
     </div>
   );
 }

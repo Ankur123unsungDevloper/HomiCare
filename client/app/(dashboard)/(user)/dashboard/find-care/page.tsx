@@ -1,10 +1,12 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { format } from "date-fns";
 import {
   Baby,
   CalendarDays,
-  ChevronDown,
+  CalendarIcon,
   Clock3,
   HeartHandshake,
   Home,
@@ -14,6 +16,14 @@ import {
   SlidersHorizontal,
   Sparkles,
 } from "lucide-react";
+
+import { Button } from "@/components/ui/button";
+import { Calendar } from "@/components/ui/calendar";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 
 const serviceTypes = [
   {
@@ -38,9 +48,47 @@ const serviceTypes = [
 
 const plans = ["Hourly", "Monthly", "Yearly"];
 
+const serviceNameMap: Record<string, string> = {
+  maid: "Maid Services",
+  babysitting: "Babysitting",
+  nanny: "Nanny Care",
+};
+
 export default function FindCarePage() {
+  const router = useRouter();
+
   const [selectedService, setSelectedService] = useState("maid");
   const [selectedPlan, setSelectedPlan] = useState("Monthly");
+
+  const [location, setLocation] = useState("");
+  const [availabilityDate, setAvailabilityDate] = useState<Date | undefined>();
+
+  function searchHelpers() {
+    const params = new URLSearchParams();
+
+    params.set("service", serviceNameMap[selectedService]);
+    params.set("plan", selectedPlan);
+
+    const locationParts = location
+      .split(",")
+      .map((part) => part.trim())
+      .filter(Boolean);
+
+    if (locationParts.length === 1) {
+      params.set("city", locationParts[0]);
+    } else if (locationParts.length >= 2) {
+      params.set("area", locationParts[0]);
+      params.set("city", locationParts[1]);
+    }
+
+    if (availabilityDate) {
+      params.set("date", format(availabilityDate, "yyyy-MM-dd"));
+    }
+
+    router.push(
+      `/dashboard/find-care/results?${params.toString()}`,
+    );
+  }
 
   return (
     <main className="min-h-full bg-background">
@@ -75,29 +123,56 @@ export default function FindCarePage() {
 
                 <input
                   type="text"
-                  placeholder="Enter your location"
+                  value={location}
+                  onChange={(e) => setLocation(e.target.value)}
+                  placeholder="e.g. Andheri, Mumbai"
                   className="w-full bg-transparent text-sm outline-none placeholder:text-muted-foreground"
                 />
               </div>
             </div>
 
             {/* Availability */}
-            <button className="flex items-center justify-between rounded-xl border bg-background px-4 py-3 text-left">
-              <div>
-                <p className="text-xs font-semibold text-muted-foreground">
-                  AVAILABILITY
-                </p>
+            <div className="rounded-xl border bg-background px-4 py-3">
+              <p className="mb-1 text-xs font-semibold text-muted-foreground">
+                AVAILABILITY
+              </p>
 
-                <div className="mt-1 flex items-center gap-2 text-sm">
-                  <CalendarDays className="size-4 text-muted-foreground" />
-                  Choose date
-                </div>
-              </div>
+              <Popover>
+                <PopoverTrigger>
+                  <Button
+                    variant="ghost"
+                    className="h-auto w-full justify-start p-0 text-left font-normal hover:bg-transparent"
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4 text-muted-foreground" />
 
-              <ChevronDown className="size-4 text-muted-foreground" />
-            </button>
+                    {availabilityDate ? (
+                      format(availabilityDate, "PPP")
+                    ) : (
+                      <span className="text-muted-foreground">
+                        Select availability date
+                      </span>
+                    )}
+                  </Button>
+                </PopoverTrigger>
 
-            <button className="inline-flex items-center justify-center gap-2 rounded-xl bg-foreground px-6 py-3 text-sm font-semibold text-background transition-opacity hover:opacity-90">
+                <PopoverContent className="w-full p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={availabilityDate}
+                    onSelect={setAvailabilityDate}
+                    disabled={(date) =>
+                      date < new Date(new Date().setHours(0, 0, 0, 0))
+                    }
+                    className="w-full"
+                  />
+                </PopoverContent>
+              </Popover>
+            </div>
+
+            <button
+              onClick={searchHelpers}
+              className="inline-flex items-center justify-center gap-2 rounded-xl bg-foreground px-6 py-3 text-sm font-semibold text-background transition-opacity hover:opacity-90"
+            >
               <Search className="size-4" />
               Search
             </button>
@@ -239,7 +314,10 @@ export default function FindCarePage() {
 
         {/* Continue */}
         <div className="flex justify-end">
-          <button className="inline-flex items-center gap-2 rounded-xl bg-foreground px-6 py-3 text-sm font-semibold text-background transition-opacity hover:opacity-90">
+          <button
+            onClick={searchHelpers}
+            className="inline-flex items-center gap-2 rounded-xl bg-foreground px-6 py-3 text-sm font-semibold text-background transition-opacity hover:opacity-90"
+          >
             Find helpers
             <Search className="size-4" />
           </button>

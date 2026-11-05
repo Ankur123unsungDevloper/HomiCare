@@ -1,5 +1,7 @@
 "use client";
 
+import { useEffect, useState } from "react";
+import { useAuth } from "@clerk/nextjs";
 import {
   ArrowRight,
   Baby,
@@ -31,16 +33,178 @@ const services = [
   },
 ];
 
-const activeServices = [
-  {
-    title: "Maid Service",
-    helper: "Priya Sharma",
-    schedule: "Mon · Wed · Fri",
-    status: "Active",
-  },
-];
+type Helper = {
+  id: string;
+  firstName: string | null;
+  lastName: string | null;
+};
+
+type DashboardBooking = {
+  id: string;
+  serviceType: string;
+  planType: string;
+  status: "PENDING" | "CONFIRMED" | "IN_PROGRESS";
+  startAt: string;
+  endAt: string | null;
+  helper: Helper | null;
+};
+
+type DashboardData = {
+  user: {
+    firstName: string | null;
+    lastName: string | null;
+  };
+  stats: {
+    upcoming: number;
+    activeServices: number;
+    completed: number;
+  };
+  nextService: DashboardBooking | null;
+  activeServicesList: DashboardBooking[];
+};
+
+function formatBookingDate(date: string) {
+  const bookingDate = new Date(date);
+  const today = new Date();
+
+  const tomorrow = new Date();
+  tomorrow.setDate(today.getDate() + 1);
+
+  const isSameDay = (a: Date, b: Date) =>
+    a.getFullYear() === b.getFullYear() &&
+    a.getMonth() === b.getMonth() &&
+    a.getDate() === b.getDate();
+
+  if (isSameDay(bookingDate, today)) return "Today";
+  if (isSameDay(bookingDate, tomorrow)) return "Tomorrow";
+
+  return bookingDate.toLocaleDateString("en-IN", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+}
+
+function formatBookingTime(date: string) {
+  return new Date(date).toLocaleTimeString("en-IN", {
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
+
+function getGreeting() {
+  const hour = new Date().getHours();
+
+  if (hour < 12) return "Good morning";
+  if (hour < 17) return "Good afternoon";
+  return "Good evening";
+}
+
+function formatHelperName(helper: Helper | null) {
+  if (!helper) return "Helper not assigned";
+
+  const name = `${helper.firstName ?? ""} ${helper.lastName ?? ""}`.trim();
+
+  return name || "Helper not assigned";
+}
 
 export default function DashboardPage() {
+  const { getToken } = useAuth();
+
+  const [dashboard, setDashboard] = useState<DashboardData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const controller = new AbortController();
+
+    async function fetchDashboard() {
+      try {
+        setLoading(true);
+        setError(null);
+
+        const token = await getToken();
+
+        if (!token) {
+          throw new Error("Please sign in to view your dashboard.");
+        }
+
+        const API_URL =
+          process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:5000";
+
+        const response = await fetch(`${API_URL}/api/user/dashboard`, {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+          signal: controller.signal,
+        });
+
+        const result = await response.json();
+
+        if (!response.ok || !result.success) {
+          throw new Error(result.message ?? "Unable to load dashboard.");
+        }
+
+        setDashboard(result.data);
+      } catch (err) {
+        if (err instanceof Error && err.name === "AbortError") {
+          return;
+        }
+
+        setError(
+          err instanceof Error ? err.message : "Something went wrong."
+        );
+      } finally {
+        if (!controller.signal.aborted) {
+          setLoading(false);
+        }
+      }
+    }
+
+    fetchDashboard();
+
+    return () => controller.abort();
+  }, [getToken]);
+
+  if (loading) {
+    return (
+      <main className="min-h-full bg-background p-6 lg:p-8">
+        <div className="mx-auto max-w-7xl">
+          <p className="text-muted-foreground">
+            Loading your dashboard...
+          </p>
+        </div>
+      </main>
+    );
+  }
+
+  if (error || !dashboard) {
+    return (
+      <main className="min-h-full bg-background p-6 lg:p-8">
+        <div className="mx-auto max-w-7xl space-y-3">
+          <h1 className="text-xl font-semibold">
+            Unable to load your dashboard
+          </h1>
+
+          <p className="text-sm text-muted-foreground">
+            {error ?? "Dashboard information is unavailable."}
+          </p>
+
+          <Button onClick={() => window.location.reload()}>
+            Try again
+          </Button>
+        </div>
+      </main>
+    );
+  }
+
+  const firstName = dashboard.user.firstName || "there";
+
+  const nextService = dashboard.nextService;
+
+  const activeServices = dashboard.activeServicesList;
+
   return (
     <main className="min-h-full bg-background">
       <div className="mx-auto max-w-7xl space-y-8 p-6 lg:p-8">
@@ -54,7 +218,7 @@ export default function DashboardPage() {
           </p>
 
           <h1 className="font-heading text-3xl font-bold tracking-tight sm:text-4xl">
-            Good evening, Ankur.
+            {getGreeting()}, {firstName}.
           </h1>
 
           <p className="mt-2 text-muted-foreground">
@@ -76,15 +240,29 @@ export default function DashboardPage() {
                 Your next service
               </div>
 
-              <h2 className="text-2xl font-bold">
-                Nanny Care
-              </h2>
+              {nextService ? (
+                <>
+                  <h2 className="text-2xl font-bold">
+                    {nextService.serviceType}
+                  </h2>
 
-              <div className="mt-4 flex flex-wrap gap-x-6 gap-y-2 text-sm opacity-75">
-                <span>Tomorrow</span>
-                <span>10:00 AM</span>
-                <span>Priya Sharma</span>
-              </div>
+                  <div className="mt-4 flex flex-wrap gap-x-6 gap-y-2 text-sm opacity-75">
+                    <span>{formatBookingDate(nextService.startAt)}</span>
+                    <span>{formatBookingTime(nextService.startAt)}</span>
+                    <span>{formatHelperName(nextService.helper)}</span>
+                  </div>
+                </>
+              ) : (
+                <div>
+                  <h2 className="text-2xl font-bold">
+                    No upcoming services
+                  </h2>
+
+                  <p className="mt-4 text-sm opacity-75">
+                    Book a service to get started.
+                  </p>
+                </div>
+              )}
             </div>
 
             <Button className="group inline-flex w-fit items-center gap-2 rounded-xl bg-background px-5 py-3 text-sm font-semibold text-foreground transition-transform hover:-translate-y-0.5 hover:bg-gray-300">
@@ -99,17 +277,17 @@ export default function DashboardPage() {
           <Stat
             icon={CalendarCheck}
             label="Upcoming"
-            value="1"
+            value={String(dashboard.stats.upcoming)}
           />
           <Stat
             icon={HeartHandshake}
             label="Active services"
-            value="1"
+            value={String(dashboard.stats.activeServices)}
           />
           <Stat
             icon={CheckCircle2}
             label="Completed"
-            value="12"
+            value={String(dashboard.stats.completed)}
           />
         </div>
 
@@ -121,34 +299,46 @@ export default function DashboardPage() {
             action="View all"
           />
 
-          <div className="mt-5">
-            {activeServices.map((service) => (
-              <div
-                key={service.title}
-                className="flex flex-col gap-5 rounded-2xl border bg-card p-5 sm:flex-row sm:items-center sm:justify-between"
-              >
-                <div className="flex items-center gap-4">
-                  <div className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-muted">
-                    <Home className="size-5" />
+          <div className="mt-5 space-y-4">
+            {activeServices.length > 0 ? (
+              activeServices.map((service) => (
+                <div
+                  key={service.id}
+                  className="flex flex-col gap-5 rounded-2xl border bg-card p-5 sm:flex-row sm:items-center sm:justify-between"
+                >
+                  <div className="flex items-center gap-4">
+                    <div className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-muted">
+                      <Home className="size-5" />
+                    </div>
+
+                    <div>
+                      <h3 className="font-semibold">
+                        {service.serviceType}
+                      </h3>
+
+                      <p className="mt-1 text-sm text-muted-foreground">
+                        {formatHelperName(service.helper)}
+                        {" · "}
+                        {formatBookingDate(service.startAt)}
+                        {" · "}
+                        {formatBookingTime(service.startAt)}
+                      </p>
+                    </div>
                   </div>
 
-                  <div>
-                    <h3 className="font-semibold">
-                      {service.title}
-                    </h3>
-
-                    <p className="mt-1 text-sm text-muted-foreground">
-                      {service.helper} · {service.schedule}
-                    </p>
+                  <div className="flex items-center gap-2 text-sm font-medium">
+                    <span className="size-2 rounded-full bg-success" />
+                    {service.status === "IN_PROGRESS"
+                      ? "In Progress"
+                      : "Confirmed"}
                   </div>
                 </div>
-
-                <div className="flex items-center gap-2 text-sm font-medium">
-                  <span className="size-2 rounded-full bg-success" />
-                  {service.status}
-                </div>
-              </div>
-            ))}
+              ))
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                You don&apos;t have any active services yet.
+              </p>
+            )}
           </div>
         </section>
 

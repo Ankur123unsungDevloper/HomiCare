@@ -1,17 +1,18 @@
 import { z } from "zod";
-  import express from "express";
-  import cors from "cors";
-  import { prisma } from "./lib/prisma.js";
-  import { firebaseAdminAuth } from "./firebase-admin.js";
-  import {
-    clerkClient,
-    clerkMiddleware,
-    getAuth,
-  } from "@clerk/express";
-  import multer from "multer";
-  import { validateVerificationDocument } from "./utils/validate-document.js";
-  import { uploadVerificationDocument } from "./services/verification-document.service.js";
-  import { createRegistrationOrder } from "./services/razorpay.service.js";
+import express from "express";
+import cors from "cors";
+import { prisma } from "./lib/prisma.js";
+import { firebaseAdminAuth } from "./firebase-admin.js";
+import {
+  clerkClient,
+  clerkMiddleware,
+  getAuth,
+} from "@clerk/express";
+import multer from "multer";
+import { validateVerificationDocument } from "./utils/validate-document.js";
+import { uploadVerificationDocument } from "./services/verification-document.service.js";
+import { createRegistrationOrder } from "./services/razorpay.service.js";
+import bookingRoutes from "./modules/booking/booking.routes.js";
 
   const helperApplicationSchema = z.object({
     fullName: z.string().trim().min(2).max(100),
@@ -49,7 +50,8 @@ import { z } from "zod";
     priority: z.enum(["LOW", "MEDIUM", "HIGH"]),
   });
 
-  const app = express();
+const app = express();
+app.use("/api/bookings", bookingRoutes);
 
   async function requireAdmin(
     req: express.Request,
@@ -2415,5 +2417,366 @@ app.patch(
     }
   },
 );
+
+// =============================================
+// USER DASHBOARD
+// =============================================
+
+app.get("/api/user/dashboard", async (req, res) => {
+  const { isAuthenticated, userId } = getAuth(req);
+
+  // Verify Clerk authentication
+  if (!isAuthenticated || !userId) {
+    return res.status(401).json({
+      success: false,
+      message: "Please sign in to access your dashboard.",
+    });
+  }
+
+  try {
+    // Find the authenticated household in the database
+    const user = await prisma.user.findUnique({
+      where: {
+        clerkId: userId,
+      },
+      select: {
+        id: true,
+        firstName: true,
+        lastName: true,
+        role: true,
+      },
+    });
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User account not found. Please synchronize your account.",
+      });
+    }
+
+    // Only household users can access this dashboard
+    if (user.role !== "USER") {
+      return res.status(403).json({
+        success: false,
+        message: "Household account access is required.",
+      });
+    }
+
+    const now = new Date();
+
+    // Only bookings belonging to this household
+    const householdFilter = {
+      householdId: user.id,
+    };
+
+    // Fetch dashboard information
+    const [
+      upcoming,
+      activeServices,
+      completed,
+      nextService,
+      activeServicesList,
+    ] = await prisma.$transaction([
+      // Upcoming bookings
+      prisma.booking.count({
+        where: {
+          ...householdFilter,
+          status: {
+            in: ["PENDING", "CONFIRMED"],
+          },
+          startAt: {
+            gte: now,
+          },
+        },
+      }),
+
+      // Active bookings
+      prisma.booking.count({
+        where: {
+          ...householdFilter,
+          status: {
+            in: ["CONFIRMED", "IN_PROGRESS"],
+          },
+        },
+      }),
+
+      // Completed bookings
+      prisma.booking.count({
+        where: {
+          ...householdFilter,
+          status: "COMPLETED",
+        },
+      }),
+
+      // Next upcoming service
+      prisma.booking.findFirst({
+        where: {
+          ...householdFilter,
+          status: {
+            in: ["PENDING", "CONFIRMED"],
+          },
+          startAt: {
+            gte: now,
+          },
+        },
+        orderBy: {
+          startAt: "asc",
+        },
+        select: {
+          id: true,
+          serviceType: true,
+          planType: true,
+          status: true,
+          startAt: true,
+          endAt: true,
+          helper: {
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+            },
+          },
+        },
+      }),
+
+      // Active services list
+      prisma.booking.findMany({
+        where: {
+          ...householdFilter,
+          status: {
+            in: ["CONFIRMED", "IN_PROGRESS"],
+          },
+        },
+        orderBy: {
+          startAt: "asc",
+        },
+        select: {
+          id: true,
+          serviceType: true,
+          planType: true,
+          status: true,
+          startAt: true,
+          endAt: true,
+          helper: {
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+            },
+          },
+        },
+      }),
+    ]);
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        user: {
+          firstName: user.firstName,
+          lastName: user.lastName,
+        },
+
+        stats: {
+          upcoming,
+          activeServices,
+          completed,
+        },
+
+        nextService,
+
+        activeServicesList,
+      },
+    });
+  } catch (error) {
+    console.error("User dashboard fetch failed:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Unable to load dashboard information.",
+    });
+  }
+});
+
+app.get("/api/helpers/search", async (req, res) => {
+  try {
+    const service = String(req.query.service ?? "").trim();
+    const city = String(req.query.city ?? "").trim();
+    const area = String(req.query.area ?? "").trim();
+
+    if (!service) {
+      return res.status(400).json({
+        success: false,
+        message: "Service type is required.",
+      });
+    }
+
+    const helpers = await prisma.helperApplication.findMany({
+      where: {
+        status: "APPROVED",
+        services: {
+          has: service,
+        },
+        ...(city && {
+          city: {
+            contains: city,
+            mode: "insensitive",
+          },
+        }),
+        ...(area && {
+          area: {
+            contains: area,
+            mode: "insensitive",
+          },
+        }),
+      },
+      select: {
+        id: true,
+        fullName: true,
+        phone: true,
+        city: true,
+        area: true,
+        services: true,
+        experience: true,
+        availability: true,
+        experienceDetails: true,
+      },
+      orderBy: {
+        experience: "desc",
+      },
+    });
+
+    return res.status(200).json({
+      success: true,
+      count: helpers.length,
+      helpers,
+    });
+  } catch (error) {
+    console.error("Helper search failed:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Unable to search for helpers.",
+    });
+  }
+});
+
+// =============================================
+// HOUSEHOLD BOOKINGS
+// =============================================
+
+app.get("/api/bookings/me", async (req, res) => {
+  const { isAuthenticated, userId } = getAuth(req);
+
+  if (!isAuthenticated || !userId) {
+    return res.status(401).json({
+      success: false,
+      message: "Please sign in to view your bookings.",
+    });
+  }
+
+  try {
+    // Find the authenticated household account.
+    const user = await prisma.user.findUnique({
+      where: {
+        clerkId: userId,
+      },
+      select: {
+        id: true,
+        role: true,
+      },
+    });
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User account not found. Please synchronize your account.",
+      });
+    }
+
+    // Only household users can access their bookings.
+    if (user.role !== "USER") {
+      return res.status(403).json({
+        success: false,
+        message: "Household account access is required.",
+      });
+    }
+
+    // Retrieve bookings belonging only to this household.
+    const bookings = await prisma.booking.findMany({
+      where: {
+        householdId: user.id,
+      },
+
+      orderBy: {
+        startAt: "desc",
+      },
+
+      select: {
+        id: true,
+        serviceType: true,
+        planType: true,
+        assignmentType: true,
+        status: true,
+        startAt: true,
+        endAt: true,
+        address: true,
+        city: true,
+        area: true,
+        createdAt: true,
+
+        helper: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+          },
+        },
+      },
+    });
+
+    // Calculate booking statistics.
+    const now = new Date();
+
+    const statistics = {
+      total: bookings.length,
+
+      upcoming: bookings.filter(
+        (booking) =>
+          ["PENDING", "CONFIRMED"].includes(booking.status) &&
+          booking.startAt >= now,
+      ).length,
+
+      pending: bookings.filter(
+        (booking) => booking.status === "PENDING",
+      ).length,
+
+      active: bookings.filter(
+        (booking) =>
+          ["CONFIRMED", "IN_PROGRESS"].includes(booking.status),
+      ).length,
+
+      completed: bookings.filter(
+        (booking) => booking.status === "COMPLETED",
+      ).length,
+
+      cancelled: bookings.filter(
+        (booking) => booking.status === "CANCELLED",
+      ).length,
+    };
+
+    return res.status(200).json({
+      success: true,
+      bookings,
+      statistics,
+    });
+  } catch (error) {
+    console.error("Fetching household bookings failed:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Unable to retrieve your bookings.",
+    });
+  }
+});
 
   export default app;

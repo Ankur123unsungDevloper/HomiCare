@@ -129,6 +129,9 @@ model User {
   householdBookings Booking[] @relation("HouseholdBookings")
   assignedBookings  Booking[] @relation("AssignedBookings")
 
+  householdReviews Review[] @relation("HouseholdReviews")
+  helperReviews   Review[] @relation("HelperReviews")
+
   filedComplaints    Complaint[] @relation("ComplaintHousehold")
   helperComplaints   Complaint[] @relation("ComplaintHelper")
   assignedComplaints Complaint[] @relation("ComplaintReviewer")
@@ -168,6 +171,8 @@ model Booking {
   city    String
   area    String
 
+  review Review?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -177,6 +182,34 @@ model Booking {
   @@index([helperId])
   @@index([status])
   @@index([startAt])
+}
+
+/**
+ * ---------------------------------------------
+ * Booking Reviews
+ * ---------------------------------------------
+ */
+
+model Review {
+  id String @id @default(cuid())
+
+  bookingId  String @unique
+  householdId String
+  helperId    String
+
+  rating  Int
+  comment String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  booking   Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  household User    @relation("HouseholdReviews", fields: [householdId], references: [id], onDelete: Cascade)
+  helper    User    @relation("HelperReviews", fields: [helperId], references: [id], onDelete: Restrict)
+
+  @@index([householdId])
+  @@index([helperId])
+  @@index([createdAt])
 }
 
 /**
