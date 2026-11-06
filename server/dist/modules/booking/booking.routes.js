@@ -1,0 +1,10 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const express_1 = require("express");
+const booking_controller_js_1 = require("./booking.controller.js");
+const router = (0, express_1.Router)();
+router.get("/:id", booking_controller_js_1.getBookingDetails);
+router.patch("/:id/cancel", booking_controller_js_1.cancelBookingController);
+router.get("/:id/helper", booking_controller_js_1.getBookingHelperController);
+router.post("/:id/review", booking_controller_js_1.submitBookingReview);
+exports.default = router;
